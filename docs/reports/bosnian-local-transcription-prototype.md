@@ -106,6 +106,13 @@ to OpenRouter's transcription endpoint with language `bs`, then sends only the
 final transcript to a separately selected text model for a Bosnian SOAP draft.
 It is intentionally model-explicit, so it cannot silently select a paid model.
 
+OpenRouter STT is request/response, not continuous microphone streaming. The
+branch therefore has a `FinalOnlyStreamingTranscriber`: capture remains local,
+the caller detects a silence boundary, and exactly one remote request is made
+for that short completed utterance. This is utterance-level near-real-time
+behavior; its actual latency has not been measured without a configured runtime
+key and a consented Bosnian recording.
+
 This path is not local and must not be used with patient audio or text until
 consent, retention, data-processing, and clinical-governance requirements are
 approved. The key is read only from `OPENROUTER_API_KEY` at runtime and is not

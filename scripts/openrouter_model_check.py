@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import wave
 from pathlib import Path
 
@@ -45,7 +46,9 @@ def main() -> None:
     if not model:
         parser.error("--transcription-model is required")
     chunk = _read_wav(args.audio)
+    started = time.perf_counter()
     segments = OpenRouterTranscriptionProvider(client, model).transcribe(chunk)
+    transcription_seconds = time.perf_counter() - started
     final_update = TranscriptUpdate(
         session_id=chunk.session_id,
         revision=1,
@@ -53,17 +56,36 @@ def main() -> None:
         segments=tuple(segments),
         is_final=True,
     )
-    print(json.dumps(final_update.to_dict(), ensure_ascii=False), flush=True)
+    print(
+        json.dumps(
+            {
+                "transcription_elapsed_seconds": round(transcription_seconds, 3),
+                "final_update": final_update.to_dict(),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
 
     if args.skip_draft:
         return
     if not args.draft_model:
         parser.error("--draft-model is required unless --skip-draft is used")
+    started = time.perf_counter()
     draft = generate_after_final_transcript(
         final_update,
         OpenRouterBosnianDraftGenerator(client, args.draft_model),
     )
-    print(json.dumps({"generation": draft.to_dict()}, ensure_ascii=False), flush=True)
+    print(
+        json.dumps(
+            {
+                "draft_elapsed_seconds": round(time.perf_counter() - started, 3),
+                "generation": draft.to_dict(),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
 
 
 def _read_wav(path: Path) -> AudioChunk:

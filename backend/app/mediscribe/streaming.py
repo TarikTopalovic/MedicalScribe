@@ -12,7 +12,7 @@ class TwoPassStreamingTranscriber:
 
     def __init__(
         self,
-        live_provider: TranscriptionProvider,
+        live_provider: TranscriptionProvider | None,
         final_provider: TranscriptionProvider,
         *,
         partial_interval_ms: int = 2_000,
@@ -57,11 +57,15 @@ class TwoPassStreamingTranscriber:
                     code=ProviderErrorCode.INVALID_AUDIO,
                     message="Live utterance exceeded the configured duration limit",
                     stage=ProcessingStage.TRANSCRIBING,
-                    provider=self.live_provider.name,
+                    provider=self._input_provider.name,
                 )
-            if duration_ms - self._last_partial_ms < self.partial_interval_ms:
+            if (
+                self.live_provider is None
+                or duration_ms - self._last_partial_ms < self.partial_interval_ms
+            ):
                 return None
 
+            assert self.live_provider is not None
             segments = self.live_provider.transcribe(self._combined_chunk("partial"))
         except Exception:
             self.abort()
@@ -127,14 +131,14 @@ class TwoPassStreamingTranscriber:
                 code=ProviderErrorCode.INVALID_AUDIO,
                 message="Live audio chunks must be contiguous",
                 stage=ProcessingStage.TRANSCRIBING,
-                provider=self.live_provider.name,
+                provider=self._input_provider.name,
             )
         if chunk.encoding != "pcm_s16le" or chunk.sample_rate_hz != 16_000 or chunk.channels != 1:
             raise ProviderError(
                 code=ProviderErrorCode.INVALID_AUDIO,
                 message="Live audio must be signed 16-bit, 16 kHz, mono PCM",
                 stage=ProcessingStage.TRANSCRIBING,
-                provider=self.live_provider.name,
+                provider=self._input_provider.name,
             )
         expected_bytes = (chunk.end_ms - chunk.start_ms) * 32
         if len(chunk.data) != expected_bytes:
@@ -142,5 +146,31 @@ class TwoPassStreamingTranscriber:
                 code=ProviderErrorCode.INVALID_AUDIO,
                 message="Live PCM byte count does not match its duration",
                 stage=ProcessingStage.TRANSCRIBING,
-                provider=self.live_provider.name,
+                provider=self._input_provider.name,
             )
+
+    @property
+    def _input_provider(self) -> TranscriptionProvider:
+        return self.live_provider or self.final_provider
+
+
+class FinalOnlyStreamingTranscriber(TwoPassStreamingTranscriber):
+    """Transcribe a short utterance only after the caller detects silence.
+
+    This keeps microphone capture local while a remote STT request is made for
+    the completed utterance, rather than repeatedly uploading partial buffers.
+    """
+
+    def __init__(
+        self,
+        final_provider: TranscriptionProvider,
+        *,
+        max_utterance_ms: int = 30_000,
+        language: str = "bs",
+    ) -> None:
+        super().__init__(
+            None,
+            final_provider,
+            max_utterance_ms=max_utterance_ms,
+            language=language,
+        )

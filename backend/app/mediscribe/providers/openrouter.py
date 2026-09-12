@@ -36,17 +36,25 @@ class OpenRouterSettings:
     """Runtime-only settings. The key must come from the environment, never Git."""
 
     api_key: str = field(repr=False)
+    allow_remote_processing: bool = False
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
         if not self.api_key.strip():
             raise ValueError("OPENROUTER_API_KEY is required for the OpenRouter provider")
+        if not self.allow_remote_processing:
+            raise ValueError("Set MEDISCRIBE_ALLOW_REMOTE_PROCESSING=true to enable OpenRouter")
         if self.timeout_seconds <= 0:
             raise ValueError("OpenRouter timeout must be positive")
 
     @classmethod
     def from_env(cls) -> "OpenRouterSettings":
-        return cls(api_key=os.getenv("OPENROUTER_API_KEY", ""))
+        return cls(
+            api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            allow_remote_processing=(
+                os.getenv("MEDISCRIBE_ALLOW_REMOTE_PROCESSING", "").lower() == "true"
+            ),
+        )
 
 
 class OpenRouterClient:

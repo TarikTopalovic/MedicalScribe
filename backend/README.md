@@ -108,6 +108,7 @@ recording):
 
 ```bash
 export OPENROUTER_API_KEY='set-this-in-your-shell'
+export MEDISCRIBE_ALLOW_REMOTE_PROCESSING=true
 python -m scripts.openrouter_model_check --list-stt-models
 ```
 
@@ -122,5 +123,8 @@ python -m scripts.openrouter_model_check approved-bosnian.wav \
 
 Add `--skip-draft` to test transcription alone. The remote STT request forces
 `bs`, asks for timestamped segments, and the remote draft can only run after
-that final transcript exists. OpenRouter documents its STT endpoint and model
-discovery at https://openrouter.ai/docs/guides/overview/multimodal/stt.
+that final transcript exists. In a microphone session, retain chunks locally
+and call the remote provider once a silence boundary is detected; this gives
+utterance-level near-real-time behavior without repeated partial uploads.
+OpenRouter documents its STT endpoint and model discovery at
+https://openrouter.ai/docs/guides/overview/multimodal/stt.

@@ -16,7 +16,9 @@ from backend.app.mediscribe.providers.openrouter import (
 
 class OpenRouterProviderTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client = OpenRouterClient(OpenRouterSettings("test-key-not-a-secret"))
+        self.client = OpenRouterClient(
+            OpenRouterSettings("test-key-not-a-secret", allow_remote_processing=True)
+        )
 
     def test_transcription_sends_bosnian_wav_without_exposing_key_in_body(self) -> None:
         response = self._response(

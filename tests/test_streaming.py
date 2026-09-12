@@ -18,7 +18,10 @@ from backend.app.mediscribe.providers.whisper_cpp import (
     WhisperCppConfig,
     WhisperCppTranscriptionProvider,
 )
-from backend.app.mediscribe.streaming import TwoPassStreamingTranscriber
+from backend.app.mediscribe.streaming import (
+    FinalOnlyStreamingTranscriber,
+    TwoPassStreamingTranscriber,
+)
 
 
 class FakeTranscriptionProvider:
@@ -157,6 +160,22 @@ class StreamingTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ProviderError, "authoritative transcript"):
             generate_after_final_transcript(provisional, LocalBosnianDraftGenerator())
+
+    def test_final_only_streaming_defers_remote_work_until_utterance_finishes(self) -> None:
+        remote = FakeTranscriptionProvider("Konačni tekst")
+        stream = FinalOnlyStreamingTranscriber(remote)
+        stream.start("session")
+
+        self.assertIsNone(stream.push(self._chunk(0, 1_000)))
+        self.assertIsNone(stream.push(self._chunk(1_000, 2_000)))
+        self.assertEqual(remote.received_bytes, 0)
+
+        result = stream.finish()
+
+        self.assertTrue(result.is_final)
+        self.assertEqual(result.segments[0].text, "Konačni tekst")
+        self.assertEqual(remote.received_bytes, 64_000)
+        self.assertEqual(stream.buffered_bytes, 0)
 
     @mock.patch.object(
         WhisperCppTranscriptionProvider,
