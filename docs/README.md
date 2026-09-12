@@ -18,9 +18,11 @@ cd backend && npm ci
 cd ../frontend && npm ci
 ```
 
-Copy `backend/.env.example` to the ignored `backend/.env`. The remote route is
-disabled by default. It requires `MEDISCRIBE_ALLOW_REMOTE_PROCESSING=true`, an
-OpenRouter key, and the UI's per-recording confirmation before audio leaves
+The bridge first reads the repository-root ignored `.env` (the existing
+runtime configuration), then an optional ignored `backend/.env` can override
+it. `backend/.env.example` documents the browser-specific values. The remote
+route is disabled by default. It requires `MEDISCRIBE_ALLOW_REMOTE_PROCESSING=true`,
+an OpenRouter key, and the UI's per-recording confirmation before audio leaves
 the machine. Choose `mai` or `whisper` with
 `MEDISCRIBE_OPENROUTER_STT_PROFILE`.
 

@@ -1,5 +1,11 @@
 // Browser bridge for the optional remote transcription path.
-require("dotenv").config();
+const path = require("path");
+const dotenv = require("dotenv");
+
+// Reuse the repository runtime environment, then allow backend/.env to supply
+// a browser-bridge-specific override. Both files are ignored by Git.
+dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
+dotenv.config({ override: true });
 
 const express = require("express");
 const cors = require("cors");
