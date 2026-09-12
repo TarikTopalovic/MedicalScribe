@@ -1,0 +1,109 @@
+from __future__ import annotations
+
+import base64
+import json
+import unittest
+from unittest import mock
+
+from backend.app.mediscribe.models import AudioChunk, TranscriptSegment
+from backend.app.mediscribe.providers.openrouter import (
+    OpenRouterBosnianDraftGenerator,
+    OpenRouterClient,
+    OpenRouterSettings,
+    OpenRouterTranscriptionProvider,
+)
+
+
+class OpenRouterProviderTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = OpenRouterClient(OpenRouterSettings("test-key-not-a-secret"))
+
+    def test_transcription_sends_bosnian_wav_without_exposing_key_in_body(self) -> None:
+        response = self._response(
+            {
+                "language": "bs",
+                "segments": [
+                    {
+                        "text": "Dobar dan.",
+                        "start": 0,
+                        "end": 1,
+                        "speaker": 0,
+                        "confidence": 0.91,
+                    }
+                ],
+            }
+        )
+        provider = OpenRouterTranscriptionProvider(self.client, "test/stt-model")
+
+        with mock.patch(
+            "backend.app.mediscribe.providers.openrouter.urlopen",
+            return_value=response,
+        ) as request_call:
+            segments = provider.transcribe(self._chunk())
+
+        request = request_call.call_args.args[0]
+        payload = json.loads(request.data)
+        self.assertEqual(payload["model"], "test/stt-model")
+        self.assertEqual(payload["language"], "bs")
+        self.assertTrue(base64.b64decode(payload["input_audio"]["data"]).startswith(b"RIFF"))
+        self.assertNotIn("test-key-not-a-secret", request.data.decode())
+        self.assertEqual(segments[0].text, "Dobar dan.")
+        self.assertEqual(segments[0].speaker, "0")
+
+    def test_remote_draft_parses_json_and_keeps_evidence_on_final_segments(self) -> None:
+        response = self._response(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "subjective": "Pacijent navodi kašalj.",
+                                    "objective": "",
+                                    "assessment": "Potrebna je procjena kliničara.",
+                                    "plan": "Pregledati nalaz.",
+                                    "warnings": ["Provjeriti transkript."],
+                                }
+                            )
+                        }
+                    }
+                ]
+            }
+        )
+        segment = TranscriptSegment(
+            id="final-1",
+            speaker="unknown",
+            text="Imam kašalj.",
+            start_ms=0,
+            end_ms=1_000,
+            confidence=0.9,
+        )
+        provider = OpenRouterBosnianDraftGenerator(self.client, "test/draft-model")
+
+        with mock.patch(
+            "backend.app.mediscribe.providers.openrouter.urlopen",
+            return_value=response,
+        ):
+            result = provider.generate([segment])
+
+        self.assertTrue(result.is_draft)
+        self.assertEqual(result.note.subjective, "Pacijent navodi kašalj.")
+        self.assertEqual(result.evidence[0].segment_ids, ("final-1",))
+        self.assertIn("Nacrt generisan putem vanjskog servisa; potrebna je provjera kliničara.", result.note.warnings)
+
+    @staticmethod
+    def _response(payload: dict[str, object]) -> mock.MagicMock:
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps(payload).encode()
+        return response
+
+    @staticmethod
+    def _chunk() -> AudioChunk:
+        return AudioChunk(
+            id="chunk-1",
+            session_id="session",
+            data=b"\x00\x00" * 16_000,
+            start_ms=0,
+            end_ms=1_000,
+        )

@@ -97,3 +97,18 @@ speaker separation, audio normalization, and an approval workflow. Evaluation
 must measure medical-term recall and review error patterns with real recordings
 before any clinician relies on it. Every note remains an unsigned draft that
 requires clinician review.
+
+## Optional OpenRouter comparison path
+
+The `feat/openrouter-transcription` branch adds an external comparison path:
+it discovers current STT models, sends an explicitly approved 16 kHz mono WAV
+to OpenRouter's transcription endpoint with language `bs`, then sends only the
+final transcript to a separately selected text model for a Bosnian SOAP draft.
+It is intentionally model-explicit, so it cannot silently select a paid model.
+
+This path is not local and must not be used with patient audio or text until
+consent, retention, data-processing, and clinical-governance requirements are
+approved. The key is read only from `OPENROUTER_API_KEY` at runtime and is not
+written to source, output, or Git. HTTP behavior is covered by mocked tests;
+no live request was made from this development environment because no runtime
+key was configured.

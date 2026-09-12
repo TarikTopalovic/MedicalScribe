@@ -94,3 +94,33 @@ utterance at 30 seconds, and clears its internal audio after success or error.
   with consented real-world Bosnian recordings belong to later phases.
 - Speaker labels and clinical content are synthetic and not clinically useful.
 - Every generated note is a draft and requires clinician review.
+
+## Optional OpenRouter model testing
+
+OpenRouter is an **external** path: approved audio and its final transcript are
+sent to the selected remote models. It is separate from the local providers and
+must not be used with patient data unless the privacy, consent, retention, and
+clinical-governance requirements have been approved.
+
+Keep the key only in the current shell or a secret manager, never in a tracked
+file. First list the currently available STT models (this request sends no
+recording):
+
+```bash
+export OPENROUTER_API_KEY='set-this-in-your-shell'
+python -m scripts.openrouter_model_check --list-stt-models
+```
+
+Then deliberately test one approved 16-bit, 16 kHz, mono Bosnian WAV. Model
+slugs are required so no paid model is selected accidentally:
+
+```bash
+python -m scripts.openrouter_model_check approved-bosnian.wav \
+  --transcription-model openai/whisper-large-v3 \
+  --draft-model openai/gpt-4o-mini
+```
+
+Add `--skip-draft` to test transcription alone. The remote STT request forces
+`bs`, asks for timestamped segments, and the remote draft can only run after
+that final transcript exists. OpenRouter documents its STT endpoint and model
+discovery at https://openrouter.ai/docs/guides/overview/multimodal/stt.
