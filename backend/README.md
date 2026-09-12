@@ -122,14 +122,22 @@ export MEDISCRIBE_CLOUD_DATA_CLASSIFICATION=synthetic
 python -m scripts.openrouter_model_check --list-stt-models
 ```
 
-Then deliberately test one approved 16-bit, 16 kHz, mono Bosnian WAV. Model
-slugs are required so no paid model is selected accidentally:
+Then deliberately test one approved 16-bit, 16 kHz, mono Bosnian WAV. There
+are two pinned, auditable STT profiles: `mai` selects
+`microsoft/mai-transcribe-2`; `whisper` selects `openai/whisper-large-v3`.
+Choose one explicitly (or set `MEDISCRIBE_OPENROUTER_STT_PROFILE` in the
+untracked runtime environment). An arbitrary model ID remains possible for a
+controlled comparison:
 
 ```bash
 python -m scripts.openrouter_model_check approved-bosnian.wav \
-  --transcription-model openai/whisper-large-v3 \
+  --stt-profile mai \
   --draft-model openai/gpt-4o-mini
 ```
+
+To compare the second option, replace `mai` with `whisper`. Do not assume
+either profile is available through an EU route: use `--list-stt-models` with
+the intended runtime settings immediately before clinical deployment.
 
 Add `--skip-draft` to test transcription alone. The remote STT request forces
 `bs`, asks for timestamped segments, and the remote draft can only run after

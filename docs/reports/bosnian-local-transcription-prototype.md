@@ -105,6 +105,10 @@ it discovers current STT models, sends an explicitly approved 16 kHz mono WAV
 to OpenRouter's transcription endpoint with language `bs`, then sends only the
 final transcript to a separately selected text model for a Bosnian SOAP draft.
 It is intentionally model-explicit, so it cannot silently select a paid model.
+It now also exposes two pinned STT profiles for a controlled comparison:
+`mai` maps to `microsoft/mai-transcribe-2` and `whisper` maps to
+`openai/whisper-large-v3`. The selection is explicit or comes from an
+untracked runtime environment variable; neither profile is auto-selected.
 
 OpenRouter STT is request/response, not continuous microphone streaming. The
 branch therefore has a `FinalOnlyStreamingTranscriber`: capture remains local,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import wave
@@ -20,6 +21,7 @@ from backend.app.mediscribe.providers.openrouter import (
     OpenRouterClient,
     OpenRouterSettings,
     OpenRouterTranscriptionProvider,
+    resolve_stt_profile,
 )
 
 
@@ -29,7 +31,16 @@ def main() -> None:
     )
     parser.add_argument("audio", type=Path, nargs="?")
     parser.add_argument("--list-stt-models", action="store_true")
-    parser.add_argument("--transcription-model")
+    model_choice = parser.add_mutually_exclusive_group()
+    model_choice.add_argument(
+        "--stt-profile",
+        choices=("mai", "whisper"),
+        help="Pinned STT profile: MAI Transcribe 2 or Whisper Large v3.",
+    )
+    model_choice.add_argument(
+        "--transcription-model",
+        help="Explicit OpenRouter STT model ID; overrides no profile because they are exclusive.",
+    )
     parser.add_argument("--draft-model")
     parser.add_argument("--skip-draft", action="store_true")
     args = parser.parse_args()
@@ -42,9 +53,7 @@ def main() -> None:
         return
 
     assert args.audio is not None
-    model = args.transcription_model
-    if not model:
-        parser.error("--transcription-model is required")
+    model = _transcription_model(args, parser)
     chunk = _read_wav(args.audio)
     started = time.perf_counter()
     segments = OpenRouterTranscriptionProvider(client, model).transcribe(chunk)
@@ -86,6 +95,20 @@ def main() -> None:
         ),
         flush=True,
     )
+
+
+def _transcription_model(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
+    """Select a named profile, an explicit model, or a deliberate env default."""
+
+    if args.transcription_model:
+        return args.transcription_model
+    profile = args.stt_profile or os.getenv("MEDISCRIBE_OPENROUTER_STT_PROFILE", "")
+    if not profile:
+        parser.error("choose --stt-profile mai|whisper or provide --transcription-model")
+    try:
+        return resolve_stt_profile(profile)
+    except ValueError as error:
+        parser.error(str(error))
 
 
 def _read_wav(path: Path) -> AudioChunk:

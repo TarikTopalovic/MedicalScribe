@@ -13,6 +13,7 @@ from backend.app.mediscribe.providers.openrouter import (
     OpenRouterClient,
     OpenRouterSettings,
     OpenRouterTranscriptionProvider,
+    resolve_stt_profile,
 )
 
 
@@ -156,6 +157,12 @@ class OpenRouterProviderTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, ProviderErrorCode.COMPLIANCE_BLOCKED)
         self.assertFalse(raised.exception.retryable)
+
+    def test_pinned_stt_profiles_keep_mai_and_whisper_available(self) -> None:
+        self.assertEqual(resolve_stt_profile("mai"), "microsoft/mai-transcribe-2")
+        self.assertEqual(resolve_stt_profile("WHISPER"), "openai/whisper-large-v3")
+        with self.assertRaisesRegex(ValueError, "mai, whisper"):
+            resolve_stt_profile("automatic")
 
     @staticmethod
     def _response(payload: dict[str, object]) -> mock.MagicMock:

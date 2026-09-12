@@ -31,6 +31,25 @@ from ..models import (
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 OPENROUTER_EU_API_BASE = "https://eu.openrouter.ai/api/v1"
 
+# These are deliberately aliases rather than an automatic quality ranking.  A
+# deployment must still confirm that its selected model is available through
+# its permitted OpenRouter route before sending an approved recording.
+OPENROUTER_STT_PROFILES: dict[str, str] = {
+    "mai": "microsoft/mai-transcribe-2",
+    "whisper": "openai/whisper-large-v3",
+}
+
+
+def resolve_stt_profile(profile: str) -> str:
+    """Return the pinned OpenRouter model for a deliberate STT profile."""
+
+    normalized = profile.strip().lower()
+    try:
+        return OPENROUTER_STT_PROFILES[normalized]
+    except KeyError as error:
+        supported = ", ".join(sorted(OPENROUTER_STT_PROFILES))
+        raise ValueError(f"Unknown STT profile '{profile}'. Choose one of: {supported}") from error
+
 
 @dataclass(frozen=True, slots=True)
 class OpenRouterSettings:
