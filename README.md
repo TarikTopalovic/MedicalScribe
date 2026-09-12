@@ -1,15 +1,17 @@
-# MediScribe
+# MedScribe AI
 
-Privacy-first medical documentation assistant.
+Privacy-first medical documentation assistant. Doktor snima ili diktira razgovor sa pacijentom,
+a aplikacija ga transkribuje (Groq Whisper) i strukturira u elektronski karton pomoću lokalnog
+Ollama modela, uz odvojen "AI prijedlog" blok za dodatnu provjeru.
 
-This repository currently contains only the initial project structure. Frontend and backend implementation will be added later.
+Vidi [docs/README.md](docs/README.md) za kompletno uputstvo za instalaciju i pokretanje.
 
 ## Structure
 
 ```text
-mediscribe/
-├── backend/       Backend application
-├── frontend/      Frontend application
+medicalscribe/
+├── backend/       Express backend (transkripcija, strukturiranje kartona, AI prijedlozi)
+├── frontend/      React (Vite) frontend
 ├── docs/          Product and technical documentation
 ├── scripts/       Development and maintenance scripts
 └── tests/         Cross-application and end-to-end tests
