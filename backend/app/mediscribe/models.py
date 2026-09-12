@@ -43,7 +43,7 @@ class AudioChunk:
 class TranscriptSegment:
     id: str
     speaker: str
-    text: str
+    text: str = field(repr=False)
     start_ms: int
     end_ms: int
     confidence: float
@@ -65,6 +65,41 @@ class TranscriptSegment:
             "end_ms": self.end_ms,
             "confidence": self.confidence,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptUpdate:
+    """One UI-safe update from a live transcription session.
+
+    Provisional text may change. Only finalized segments may be passed to note
+    generation or stored as the authoritative transcript.
+    """
+
+    session_id: str
+    revision: int
+    language: str
+    provisional_text: str = field(default="", repr=False)
+    segments: tuple[TranscriptSegment, ...] = ()
+    is_final: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.session_id or self.revision < 1:
+            raise ValueError("Transcript update requires a session and positive revision")
+        if self.is_final and self.provisional_text:
+            raise ValueError("A final update cannot contain provisional text")
+        if not self.is_final and self.segments:
+            raise ValueError("Only final updates may contain authoritative segments")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "revision": self.revision,
+            "language": self.language,
+            "provisional_text": self.provisional_text,
+            "segments": [segment.to_dict() for segment in self.segments],
+            "is_final": self.is_final,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class ClinicalNote:

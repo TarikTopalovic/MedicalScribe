@@ -9,6 +9,7 @@ from .models import (
     ProcessingStage,
     ProcessingStatus,
     TranscriptSegment,
+    TranscriptUpdate,
 )
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     "ProcessingStatus",
     "ProviderConfig",
     "TranscriptSegment",
+    "TranscriptUpdate",
     "create_provider",
 ]

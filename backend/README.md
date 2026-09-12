@@ -50,10 +50,41 @@ Model choice, quantization, worker count, and chunk size will be accepted only
 after measurements on this machine; the current mock result does not predict
 real-model latency or memory use.
 
+## Bosnian live transcription prototype
+
+The selected CPU profile uses two local multilingual `whisper.cpp` models:
+
+- `small-q5_1` produces replaceable provisional text while the person speaks.
+- `large-v3-turbo-q5_0` produces the authoritative Bosnian transcript after an
+  utterance ends. Only this result may enter clinical-note generation.
+
+Install the pinned engine and both verified models (about 730 MiB total):
+
+```bash
+bash scripts/setup_whisper_cpp.sh
+```
+
+The setup uses two build workers and live transcription uses four CPU threads
+by default to avoid monopolizing a basic laptop. Change either only when the
+machine has stable cooling: `MEDISCRIBE_BUILD_JOBS=4` for setup or
+`--threads 6` for a deliberate demo run.
+
+Export the three paths printed by the setup script, then simulate live chunks
+from a synthetic 16-bit, 16 kHz, mono WAV file:
+
+```bash
+python -m scripts.demo_bosnian_streaming synthetic-bosnian.wav
+```
+
+Add `--realtime` to replay the input at recording speed. The shared recorder
+must call `finish()` after an utterance boundary (target: 700 ms of silence).
+The streaming controller rejects discontinuous or malformed chunks, caps one
+utterance at 30 seconds, and clears its internal audio after success or error.
+
 ## Current limitations
 
 - Transcription and note generation are deterministic mocks.
-- Audio normalization, live chunking, persistence cleanup, timeouts, and model
-  performance measurements belong to later phases.
+- Microphone capture, voice-activity detection, speaker labels, and evaluation
+  with consented real-world Bosnian recordings belong to later phases.
 - Speaker labels and clinical content are synthetic and not clinically useful.
 - Every generated note is a draft and requires clinician review.

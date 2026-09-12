@@ -34,4 +34,4 @@ Thumbs.db
 *.sqlite3
 *.log
 uploads/
-
+.runtime/
