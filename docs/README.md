@@ -69,3 +69,18 @@ by the host operating system; only the API is containerized. See
 
 The Compose file has been syntax-validated. A running Docker daemon is required
 to build or start the container with the command above.
+
+## Supabase persistence foundation
+
+The repository contains versioned Supabase migrations in `supabase/migrations/`.
+Configure the GitHub-connected deployment workflow to apply them only after
+review. The first migration stores clinician-owned sessions,
+authoritative transcript segments, and draft notes; it deliberately does not
+retain audio. RLS is enabled on every table, anonymous access is revoked, and
+the Electron renderer must never receive `SUPABASE_SERVICE_ROLE_KEY`.
+
+Before applying the migration to any patient-data project, confirm the exact
+project region in Supabase (choose an exact EU region, not the generic Europe
+grouping), sign the required DPA, and create clinician accounts in Supabase
+Auth. The current app does not persist clinical data until its authentication
+and server-side Supabase repository are implemented.
