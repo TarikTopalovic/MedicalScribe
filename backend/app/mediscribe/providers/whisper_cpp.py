@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 import wave
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,17 +22,20 @@ class WhisperCppConfig:
     binary_path: Path
     model_path: Path
     language: str = "bs"
-    # A conservative default keeps the desktop responsive and limits sustained
-    # heat on laptops. Higher counts require an explicit user choice.
-    threads: int = min(4, os.cpu_count() or 4)
+    # One worker is the safe default for a basic laptop. Higher counts require
+    # an explicit user choice and stable cooling.
+    threads: int = 1
     beam_size: int = 5
     timeout_seconds: float = 180.0
+    max_cpu_temperature_celsius: float = 85.0
 
     def __post_init__(self) -> None:
         if self.language != "bs":
             raise ValueError("The local clinical transcription language must be Bosnian (bs)")
         if self.threads < 1 or self.beam_size < 1 or self.timeout_seconds <= 0:
             raise ValueError("Whisper thread, beam, and timeout values must be positive")
+        if not 50.0 <= self.max_cpu_temperature_celsius <= 100.0:
+            raise ValueError("Maximum CPU temperature must be between 50 and 100 Celsius")
 
 
 class WhisperCppTranscriptionProvider:
@@ -46,6 +50,7 @@ class WhisperCppTranscriptionProvider:
 
     def transcribe(self, chunk: AudioChunk) -> list[TranscriptSegment]:
         wav_data = self._to_wav(chunk)
+        self._assert_safe_temperature()
         try:
             with tempfile.TemporaryDirectory(prefix="mediscribe-audio-") as directory:
                 input_path = Path(directory, "input.wav")
@@ -70,13 +75,21 @@ class WhisperCppTranscriptionProvider:
                     "-of",
                     str(output_path),
                 ]
-                completed = subprocess.run(
+                process = subprocess.Popen(
                     command,
-                    capture_output=True,
-                    timeout=self.config.timeout_seconds,
-                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                 )
-                if completed.returncode != 0:
+                deadline = time.monotonic() + self.config.timeout_seconds
+                while process.poll() is None:
+                    self._assert_safe_temperature(process)
+                    if time.monotonic() >= deadline:
+                        process.kill()
+                        process.communicate()
+                        raise subprocess.TimeoutExpired(command, self.config.timeout_seconds)
+                    time.sleep(0.25)
+                process.communicate()
+                if process.returncode != 0:
                     raise self._error("whisper.cpp transcription failed")
                 payload = json.loads(output_path.with_suffix(".json").read_text())
                 return self._segments(chunk, payload)
@@ -164,3 +177,35 @@ class WhisperCppTranscriptionProvider:
             stage=ProcessingStage.TRANSCRIBING,
             provider=self.name,
         )
+
+    def _assert_safe_temperature(self, process: subprocess.Popen[bytes] | None = None) -> None:
+        temperature = self._read_cpu_temperature_celsius()
+        if temperature is None or temperature < self.config.max_cpu_temperature_celsius:
+            return
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.communicate()
+        raise ProviderError(
+            code=ProviderErrorCode.THERMAL_LIMIT,
+            message=(
+                "Local transcription stopped because CPU temperature reached "
+                f"{temperature:.1f}°C; wait for the laptop to cool"
+            ),
+            stage=ProcessingStage.TRANSCRIBING,
+            provider=self.name,
+            retryable=True,
+        )
+
+    @staticmethod
+    def _read_cpu_temperature_celsius() -> float | None:
+        thermal_root = Path("/sys/class/thermal")
+        try:
+            temperatures = []
+            for zone in thermal_root.glob("thermal_zone*"):
+                zone_type = (zone / "type").read_text().strip().lower()
+                if "cpu" not in zone_type:
+                    continue
+                temperatures.append(int((zone / "temp").read_text().strip()) / 1_000)
+            return max(temperatures, default=None)
+        except (OSError, ValueError):
+            return None

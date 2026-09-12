@@ -72,16 +72,18 @@ high-load attempt was made after that point.
 ## Safety adjustment after the stability incident
 
 The initial model installation and benchmark used sustained CPU work and
-coincided with laptop shutdowns. The current code now defaults to **two** build
-workers and **four** transcription threads. Larger values need an explicit
-command-line choice. Do not run a high-quality decode until cooling and power
-stability have been checked; performance mode should not be used as a reason to
-override thermal limits.
+coincided with laptop shutdowns. A subsequent two-core, low-priority test of an
+11-second WAV reached **98°C** CPU temperature, so no further real-model test
+was run. The current code now defaults to **one** build worker and **one**
+transcription thread. On Linux it refuses to start at 85°C or above and kills
+an in-progress decode that reaches that limit. Do not run a high-quality decode
+until cooling and power stability have been checked; performance mode should
+not be used as a reason to override thermal limits.
 
 ## Verification completed
 
 - Pinned engine build completed and both model checksums verified locally.
-- Adapter and streaming-controller tests pass: **10/10**.
+- Adapter, thermal-guard, streaming-controller, and local-draft tests pass.
 - Post-transcription local-draft tests pass: **2/2**.
 - Python compilation, Bash syntax validation, and Git whitespace validation
   pass.

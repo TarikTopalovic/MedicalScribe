@@ -6,7 +6,7 @@ runtime_dir=${MEDISCRIBE_RUNTIME_DIR:-"$repo_root/.runtime"}
 source_dir="$runtime_dir/whisper.cpp"
 cmake_venv="$runtime_dir/cmake-venv"
 whisper_commit=1da4dc82fa7996d4edda05890dca65aeceaafd6d
-build_jobs=${MEDISCRIBE_BUILD_JOBS:-2}
+build_jobs=${MEDISCRIBE_BUILD_JOBS:-1}
 
 if ! [[ "$build_jobs" =~ ^[1-9][0-9]*$ ]]; then
     echo "MEDISCRIBE_BUILD_JOBS must be a positive integer" >&2

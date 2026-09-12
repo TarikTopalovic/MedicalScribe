@@ -70,10 +70,10 @@ Install the pinned engine and both verified models (about 730 MiB total):
 bash scripts/setup_whisper_cpp.sh
 ```
 
-The setup uses two build workers and live transcription uses four CPU threads
-by default to avoid monopolizing a basic laptop. Change either only when the
-machine has stable cooling: `MEDISCRIBE_BUILD_JOBS=4` for setup or
-`--threads 6` for a deliberate demo run.
+The setup and transcription default to one worker/thread. On Linux, the
+transcription adapter refuses to start at 85°C or above and checks this limit
+while decoding. Do not raise `MEDISCRIBE_BUILD_JOBS` or `--threads` until the
+laptop has stable cooling; the guard does not repair a failing fan or firmware.
 
 Export the three paths printed by the setup script, then simulate live chunks
 from a synthetic 16-bit, 16 kHz, mono WAV file:

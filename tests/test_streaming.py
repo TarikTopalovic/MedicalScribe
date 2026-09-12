@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend.app.mediscribe.errors import ProviderError, ProviderErrorCode
 from backend.app.mediscribe.models import (
@@ -156,6 +157,24 @@ class StreamingTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ProviderError, "authoritative transcript"):
             generate_after_final_transcript(provisional, LocalBosnianDraftGenerator())
+
+    @mock.patch.object(
+        WhisperCppTranscriptionProvider,
+        "_read_cpu_temperature_celsius",
+        return_value=86.0,
+    )
+    def test_whisper_adapter_refuses_to_start_when_cpu_is_hot(self, _temperature: mock.Mock) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory, "whisper-cli")
+            model = Path(directory, "model.bin")
+            binary.touch(mode=0o700)
+            model.touch()
+            provider = WhisperCppTranscriptionProvider(WhisperCppConfig(binary, model))
+
+            with self.assertRaisesRegex(ProviderError, "temperature reached") as raised:
+                provider.transcribe(self._chunk(0, 1_000))
+
+        self.assertEqual(raised.exception.code, ProviderErrorCode.THERMAL_LIMIT)
 
     @staticmethod
     def _chunk(start_ms: int, end_ms: int) -> AudioChunk:

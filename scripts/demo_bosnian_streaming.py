@@ -45,16 +45,29 @@ def main() -> None:
         default=os.getenv("MEDISCRIBE_WHISPER_FINAL_MODEL"),
         required="MEDISCRIBE_WHISPER_FINAL_MODEL" not in os.environ,
     )
-    parser.add_argument("--threads", type=int, default=min(4, os.cpu_count() or 4))
+    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--max-cpu-temperature", type=float, default=85.0)
     parser.add_argument("--chunk-ms", type=int, default=2_000)
     parser.add_argument("--realtime", action="store_true")
     args = parser.parse_args()
 
     live = WhisperCppTranscriptionProvider(
-        WhisperCppConfig(args.binary, args.live_model, threads=args.threads, beam_size=1)
+        WhisperCppConfig(
+            args.binary,
+            args.live_model,
+            threads=args.threads,
+            beam_size=1,
+            max_cpu_temperature_celsius=args.max_cpu_temperature,
+        )
     )
     final = WhisperCppTranscriptionProvider(
-        WhisperCppConfig(args.binary, args.final_model, threads=args.threads, beam_size=5)
+        WhisperCppConfig(
+            args.binary,
+            args.final_model,
+            threads=args.threads,
+            beam_size=5,
+            max_cpu_temperature_celsius=args.max_cpu_temperature,
+        )
     )
     stream = TwoPassStreamingTranscriber(
         live,
