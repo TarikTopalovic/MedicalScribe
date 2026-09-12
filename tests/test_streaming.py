@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,7 @@ from backend.app.mediscribe.models import (
 from backend.app.mediscribe.pipeline import generate_after_final_transcript
 from backend.app.mediscribe.providers.local_bosnian_draft import LocalBosnianDraftGenerator
 from backend.app.mediscribe.providers.whisper_cpp import (
+    _DECODE_GATE,
     WhisperCppConfig,
     WhisperCppTranscriptionProvider,
 )
@@ -100,6 +102,7 @@ class StreamingTests(unittest.TestCase):
             model.touch()
             config = WhisperCppConfig(binary, model)
             self.assertEqual(config.language, "bs")
+            self.assertEqual(config.threads, os.cpu_count() or 1)
             with self.assertRaises(ValueError):
                 WhisperCppConfig(binary, model, language="en")
 
@@ -194,6 +197,22 @@ class StreamingTests(unittest.TestCase):
                 provider.transcribe(self._chunk(0, 1_000))
 
         self.assertEqual(raised.exception.code, ProviderErrorCode.THERMAL_LIMIT)
+
+    def test_only_one_local_ai_decode_may_run_at_once(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory, "whisper-cli")
+            model = Path(directory, "model.bin")
+            binary.touch(mode=0o700)
+            model.touch()
+            provider = WhisperCppTranscriptionProvider(
+                WhisperCppConfig(binary, model, timeout_seconds=0.001)
+            )
+
+            with _DECODE_GATE:
+                with self.assertRaisesRegex(ProviderError, "Another local AI") as raised:
+                    provider.transcribe(self._chunk(0, 1_000))
+
+        self.assertEqual(raised.exception.code, ProviderErrorCode.TIMEOUT)
 
     @staticmethod
     def _chunk(start_ms: int, end_ms: int) -> AudioChunk:

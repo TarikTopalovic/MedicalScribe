@@ -45,7 +45,7 @@ def main() -> None:
         default=os.getenv("MEDISCRIBE_WHISPER_FINAL_MODEL"),
         required="MEDISCRIBE_WHISPER_FINAL_MODEL" not in os.environ,
     )
-    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--threads", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--max-cpu-temperature", type=float, default=85.0)
     parser.add_argument("--chunk-ms", type=int, default=2_000)
     parser.add_argument("--realtime", action="store_true")

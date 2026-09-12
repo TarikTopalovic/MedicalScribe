@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
 import time
 import wave
 from dataclasses import dataclass
@@ -16,15 +17,16 @@ from typing import Any
 from ..errors import ProviderError, ProviderErrorCode
 from ..models import AudioChunk, ProcessingStage, TranscriptSegment
 
+_DECODE_GATE = threading.BoundedSemaphore(value=1)
+
 
 @dataclass(frozen=True, slots=True)
 class WhisperCppConfig:
     binary_path: Path
     model_path: Path
     language: str = "bs"
-    # One worker is the safe default for a basic laptop. Higher counts require
-    # an explicit user choice and stable cooling.
-    threads: int = 1
+    # Use the available logical CPUs for the one permitted local decode.
+    threads: int = os.cpu_count() or 1
     beam_size: int = 5
     timeout_seconds: float = 180.0
     max_cpu_temperature_celsius: float = 85.0
@@ -50,59 +52,70 @@ class WhisperCppTranscriptionProvider:
 
     def transcribe(self, chunk: AudioChunk) -> list[TranscriptSegment]:
         wav_data = self._to_wav(chunk)
-        self._assert_safe_temperature()
-        try:
-            with tempfile.TemporaryDirectory(prefix="mediscribe-audio-") as directory:
-                input_path = Path(directory, "input.wav")
-                output_path = Path(directory, "result")
-                input_path.write_bytes(wav_data)
-                command = [
-                    str(self.config.binary_path),
-                    "-m",
-                    str(self.config.model_path),
-                    "-f",
-                    str(input_path),
-                    "-l",
-                    self.config.language,
-                    "-t",
-                    str(self.config.threads),
-                    "-bs",
-                    str(self.config.beam_size),
-                    "-bo",
-                    str(self.config.beam_size),
-                    "-ng",
-                    "-ojf",
-                    "-of",
-                    str(output_path),
-                ]
-                process = subprocess.Popen(
-                    command,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                deadline = time.monotonic() + self.config.timeout_seconds
-                while process.poll() is None:
-                    self._assert_safe_temperature(process)
-                    if time.monotonic() >= deadline:
-                        process.kill()
-                        process.communicate()
-                        raise subprocess.TimeoutExpired(command, self.config.timeout_seconds)
-                    time.sleep(0.25)
-                process.communicate()
-                if process.returncode != 0:
-                    raise self._error("whisper.cpp transcription failed")
-                payload = json.loads(output_path.with_suffix(".json").read_text())
-                return self._segments(chunk, payload)
-        except subprocess.TimeoutExpired as error:
+        if not _DECODE_GATE.acquire(timeout=self.config.timeout_seconds):
             raise ProviderError(
                 code=ProviderErrorCode.TIMEOUT,
-                message="Local transcription timed out",
+                message="Another local AI transcription is still running",
                 stage=ProcessingStage.TRANSCRIBING,
                 provider=self.name,
                 retryable=True,
-            ) from error
-        except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
-            raise self._error("Invalid response from whisper.cpp") from error
+            )
+        try:
+            self._assert_safe_temperature()
+            try:
+                with tempfile.TemporaryDirectory(prefix="mediscribe-audio-") as directory:
+                    input_path = Path(directory, "input.wav")
+                    output_path = Path(directory, "result")
+                    input_path.write_bytes(wav_data)
+                    command = [
+                        str(self.config.binary_path),
+                        "-m",
+                        str(self.config.model_path),
+                        "-f",
+                        str(input_path),
+                        "-l",
+                        self.config.language,
+                        "-t",
+                        str(self.config.threads),
+                        "-bs",
+                        str(self.config.beam_size),
+                        "-bo",
+                        str(self.config.beam_size),
+                        "-ng",
+                        "-ojf",
+                        "-of",
+                        str(output_path),
+                    ]
+                    process = subprocess.Popen(
+                        command,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                    deadline = time.monotonic() + self.config.timeout_seconds
+                    while process.poll() is None:
+                        self._assert_safe_temperature(process)
+                        if time.monotonic() >= deadline:
+                            process.kill()
+                            process.communicate()
+                            raise subprocess.TimeoutExpired(command, self.config.timeout_seconds)
+                        time.sleep(0.25)
+                    process.communicate()
+                    if process.returncode != 0:
+                        raise self._error("whisper.cpp transcription failed")
+                    payload = json.loads(output_path.with_suffix(".json").read_text())
+                    return self._segments(chunk, payload)
+            except subprocess.TimeoutExpired as error:
+                raise ProviderError(
+                    code=ProviderErrorCode.TIMEOUT,
+                    message="Local transcription timed out",
+                    stage=ProcessingStage.TRANSCRIBING,
+                    provider=self.name,
+                    retryable=True,
+                ) from error
+            except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
+                raise self._error("Invalid response from whisper.cpp") from error
+        finally:
+            _DECODE_GATE.release()
 
     def _to_wav(self, chunk: AudioChunk) -> bytes:
         if not chunk.data:

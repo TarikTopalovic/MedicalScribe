@@ -70,10 +70,11 @@ Install the pinned engine and both verified models (about 730 MiB total):
 bash scripts/setup_whisper_cpp.sh
 ```
 
-The setup and transcription default to one worker/thread. On Linux, the
-transcription adapter refuses to start at 85°C or above and checks this limit
-while decoding. Do not raise `MEDISCRIBE_BUILD_JOBS` or `--threads` until the
-laptop has stable cooling; the guard does not repair a failing fan or firmware.
+The build defaults to one worker. Each local transcription uses all available
+logical CPU threads, but a process-wide gate permits only one local AI decode at
+a time. On Linux, the transcription adapter refuses to start at 85°C or above
+and checks this limit while decoding. The guard does not repair a failing fan
+or firmware.
 
 Export the three paths printed by the setup script, then simulate live chunks
 from a synthetic 16-bit, 16 kHz, mono WAV file:
