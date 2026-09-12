@@ -41,3 +41,6 @@ izjavu”. For local provisional text while speaking, use the Python streaming
 prototype documented in [../backend/README.md](../backend/README.md). Do not
 use either prototype for clinical decisions without the required validation,
 consent, and governance work.
+
+The full implementation backlog and acceptance criteria are in
+[ui-implementation-spec.md](ui-implementation-spec.md).
