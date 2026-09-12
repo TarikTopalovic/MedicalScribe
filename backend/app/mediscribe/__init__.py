@@ -1,6 +1,7 @@
 """Privacy-first provider primitives for MediScribe."""
 
 from .config import ProviderConfig, create_provider
+from .pipeline import generate_after_final_transcript
 from .models import (
     AudioChunk,
     ClinicalNote,
@@ -17,6 +18,7 @@ __all__ = [
     "ClinicalNote",
     "EvidenceReference",
     "GenerationResult",
+    "generate_after_final_transcript",
     "ProcessingStage",
     "ProcessingStatus",
     "ProviderConfig",

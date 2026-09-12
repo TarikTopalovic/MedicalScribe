@@ -15,6 +15,8 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 from backend.app.mediscribe.models import AudioChunk
+from backend.app.mediscribe.pipeline import generate_after_final_transcript
+from backend.app.mediscribe.providers.local_bosnian_draft import LocalBosnianDraftGenerator
 from backend.app.mediscribe.providers.whisper_cpp import (
     WhisperCppConfig,
     WhisperCppTranscriptionProvider,
@@ -98,7 +100,13 @@ def main() -> None:
             if args.realtime:
                 time.sleep(duration_ms / 1_000)
 
-        print(json.dumps(stream.finish().to_dict(), ensure_ascii=False), flush=True)
+        final_update = stream.finish()
+        print(json.dumps(final_update.to_dict(), ensure_ascii=False), flush=True)
+        draft = generate_after_final_transcript(
+            final_update,
+            LocalBosnianDraftGenerator(),
+        )
+        print(json.dumps({"generation": draft.to_dict()}, ensure_ascii=False), flush=True)
     finally:
         for index in range(len(pcm)):
             pcm[index] = 0

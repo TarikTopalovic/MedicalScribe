@@ -5,15 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Sequence
 
-from .errors import ProviderError
+from .errors import ProviderError, ProviderErrorCode
 from .models import (
     AudioChunk,
     GenerationResult,
     ProcessingStage,
     ProcessingStatus,
     TranscriptSegment,
+    TranscriptUpdate,
 )
-from .providers.base import ProcessingProvider
+from .providers.base import NoteGenerationProvider, ProcessingProvider
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,29 @@ class ProcessingResult:
             "transcript": [segment.to_dict() for segment in self.transcript],
             "generation": self.generation.to_dict() if self.generation else None,
         }
+
+
+def generate_after_final_transcript(
+    update: TranscriptUpdate,
+    provider: NoteGenerationProvider,
+) -> GenerationResult:
+    """Generate a draft only after the final transcription pass completes."""
+
+    if not update.is_final or not update.segments:
+        raise ProviderError(
+            code=ProviderErrorCode.INVALID_TRANSCRIPT,
+            message="A non-empty authoritative transcript is required before generation",
+            stage=ProcessingStage.GENERATING,
+            provider=provider.name,
+        )
+    if update.language != "bs":
+        raise ProviderError(
+            code=ProviderErrorCode.INVALID_TRANSCRIPT,
+            message="Local draft generation currently accepts Bosnian transcripts only",
+            stage=ProcessingStage.GENERATING,
+            provider=provider.name,
+        )
+    return provider.generate(update.segments)
 
 
 def process_chunks(

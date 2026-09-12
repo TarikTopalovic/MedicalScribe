@@ -58,6 +58,12 @@ The selected CPU profile uses two local multilingual `whisper.cpp` models:
 - `large-v3-turbo-q5_0` produces the authoritative Bosnian transcript after an
   utterance ends. Only this result may enter clinical-note generation.
 
+After final transcription, `LocalBosnianDraftGenerator` creates a local SOAP
+draft from final segments only. It copies spoken content into the subjective
+field, does not invent a diagnosis, and requires clinician review. This is a
+small deterministic generator, so it adds no model download or sustained CPU
+load.
+
 Install the pinned engine and both verified models (about 730 MiB total):
 
 ```bash

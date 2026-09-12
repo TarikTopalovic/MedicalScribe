@@ -5,7 +5,14 @@ import unittest
 from pathlib import Path
 
 from backend.app.mediscribe.errors import ProviderError, ProviderErrorCode
-from backend.app.mediscribe.models import AudioChunk, ProcessingStage, TranscriptSegment
+from backend.app.mediscribe.models import (
+    AudioChunk,
+    ProcessingStage,
+    TranscriptSegment,
+    TranscriptUpdate,
+)
+from backend.app.mediscribe.pipeline import generate_after_final_transcript
+from backend.app.mediscribe.providers.local_bosnian_draft import LocalBosnianDraftGenerator
 from backend.app.mediscribe.providers.whisper_cpp import (
     WhisperCppConfig,
     WhisperCppTranscriptionProvider,
@@ -110,6 +117,45 @@ class StreamingTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ProviderError, "valid WAV"):
                 provider.transcribe(chunk)
+
+    def test_local_draft_uses_only_finalized_bosnian_segments(self) -> None:
+        segment = TranscriptSegment(
+            id="final-segment",
+            speaker="unknown",
+            text="Imam temperaturu i alergičan sam na penicilin.",
+            start_ms=0,
+            end_ms=2_000,
+            confidence=0.9,
+        )
+        final_update = TranscriptUpdate(
+            session_id="session",
+            revision=2,
+            language="bs",
+            segments=(segment,),
+            is_final=True,
+        )
+
+        result = generate_after_final_transcript(
+            final_update,
+            LocalBosnianDraftGenerator(),
+        )
+
+        self.assertEqual(result.note.subjective, segment.text)
+        self.assertEqual(result.note.objective, "")
+        self.assertTrue(result.is_draft)
+        self.assertEqual(result.evidence[0].segment_ids, (segment.id,))
+        self.assertIn("Automatska dijagnoza nije generisana.", result.note.warnings)
+
+    def test_local_draft_rejects_provisional_text(self) -> None:
+        provisional = TranscriptUpdate(
+            session_id="session",
+            revision=1,
+            language="bs",
+            provisional_text="Nedovršeni tekst",
+        )
+
+        with self.assertRaisesRegex(ProviderError, "authoritative transcript"):
+            generate_after_final_transcript(provisional, LocalBosnianDraftGenerator())
 
     @staticmethod
     def _chunk(start_ms: int, end_ms: int) -> AudioChunk:

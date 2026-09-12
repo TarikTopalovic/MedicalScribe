@@ -14,7 +14,7 @@ The implemented flow is:
   -> small-q5_1 provisional text while speaking
   -> utterance boundary (target: 700 ms silence)
   -> large-v3-turbo-q5_0 authoritative segments
-  -> clinician-reviewed draft generation (next phase)
+  -> local Bosnian clinician-reviewed draft generation
 ```
 
 Provisional text is structurally separated from final segments. It may be shown
@@ -23,6 +23,12 @@ chunk continuity and format, limits an utterance to 30 seconds, and overwrites
 its in-memory audio buffer after a success, failure, or abort. The adapter does
 not log audio bytes or transcript text, and it uses per-call temporary files
 that are removed at the end of transcription.
+
+After the final pass, `LocalBosnianDraftGenerator` runs locally. It copies the
+finalized spoken text into the subjective field, adds no clinical facts or
+diagnosis, preserves evidence links to the source segments, and marks the
+result as a draft requiring clinician approval. It rejects provisional text, so
+generation cannot begin before transcription is authoritative.
 
 ## Selected approach
 
@@ -76,6 +82,7 @@ override thermal limits.
 
 - Pinned engine build completed and both model checksums verified locally.
 - Adapter and streaming-controller tests pass: **10/10**.
+- Post-transcription local-draft tests pass: **2/2**.
 - Python compilation, Bash syntax validation, and Git whitespace validation
   pass.
 - No models, audio recordings, or patient data are tracked by Git.
