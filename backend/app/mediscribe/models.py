@@ -7,11 +7,11 @@ and clinical note content must never be written to application logs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 
-class ProcessingStage(StrEnum):
+class ProcessingStage(str, Enum):
     RECEIVED = "received"
     TRANSCRIBING = "transcribing"
     GENERATING = "generating"

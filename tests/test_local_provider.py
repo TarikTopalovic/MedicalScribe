@@ -21,6 +21,7 @@ class MockLocalProviderTests(unittest.TestCase):
         chunk = self._chunk()
         result = MockLocalProvider().transcribe(chunk)
 
+        self.assertNotIn("synthetic", repr(chunk))
         self.assertEqual(len(result), 1)
         self.assertEqual(
             set(result[0].to_dict()),

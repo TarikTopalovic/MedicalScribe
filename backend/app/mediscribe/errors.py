@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 from .models import ProcessingStage
 
 
-class ProviderErrorCode(StrEnum):
+class ProviderErrorCode(str, Enum):
     INVALID_AUDIO = "invalid_audio"
     INVALID_TRANSCRIPT = "invalid_transcript"
     UNSUPPORTED_PROVIDER = "unsupported_provider"
