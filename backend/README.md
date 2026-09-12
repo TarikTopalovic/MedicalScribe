@@ -90,7 +90,8 @@ utterance at 30 seconds, and clears its internal audio after success or error.
 
 ## Current limitations
 
-- Transcription and note generation are deterministic mocks.
+- The default selected provider remains a deterministic mock; local
+  `whisper.cpp` and OpenRouter paths are opt-in prototypes.
 - Microphone capture, voice-activity detection, speaker labels, and evaluation
   with consented real-world Bosnian recordings belong to later phases.
 - Speaker labels and clinical content are synthetic and not clinically useful.

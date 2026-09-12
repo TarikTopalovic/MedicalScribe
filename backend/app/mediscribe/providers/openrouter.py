@@ -262,8 +262,8 @@ class OpenRouterTranscriptionProvider:
             stage=ProcessingStage.TRANSCRIBING,
             provider=self.name,
         )
-        response_language = payload.get("language")
-        if response_language not in (None, "bs", "bosnian"):
+        response_language = str(payload.get("language", "")).strip().lower()
+        if response_language and response_language not in {"bs", "bs-ba", "bos", "bosnian"}:
             raise self._error("OpenRouter returned a non-Bosnian transcription")
 
         segments = self._segments(chunk, payload)

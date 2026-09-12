@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import unittest
@@ -15,6 +16,7 @@ from backend.app.mediscribe.providers.openrouter import (
     OpenRouterTranscriptionProvider,
     resolve_stt_profile,
 )
+from scripts.openrouter_model_check import _transcription_model
 
 
 class OpenRouterProviderTests(unittest.TestCase):
@@ -55,6 +57,23 @@ class OpenRouterProviderTests(unittest.TestCase):
         self.assertNotIn("test-key-not-a-secret", request.data.decode())
         self.assertEqual(segments[0].text, "Dobar dan.")
         self.assertEqual(segments[0].speaker, "0")
+
+    def test_transcription_accepts_standard_bosnian_language_aliases(self) -> None:
+        response = self._response(
+            {
+                "language": "bs-BA",
+                "text": "Dobar dan.",
+            }
+        )
+        provider = OpenRouterTranscriptionProvider(self.client, "test/stt-model")
+
+        with mock.patch(
+            "backend.app.mediscribe.providers.openrouter.urlopen",
+            return_value=response,
+        ):
+            segments = provider.transcribe(self._chunk())
+
+        self.assertEqual(segments[0].text, "Dobar dan.")
 
     def test_remote_draft_parses_json_and_keeps_evidence_on_final_segments(self) -> None:
         response = self._response(
@@ -163,6 +182,18 @@ class OpenRouterProviderTests(unittest.TestCase):
         self.assertEqual(resolve_stt_profile("WHISPER"), "openai/whisper-large-v3")
         with self.assertRaisesRegex(ValueError, "mai, whisper"):
             resolve_stt_profile("automatic")
+
+    def test_cli_honors_configured_model_before_runtime_profile(self) -> None:
+        args = argparse.Namespace(transcription_model=None, stt_profile=None)
+        parser = argparse.ArgumentParser()
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "MEDISCRIBE_OPENROUTER_TRANSCRIPTION_MODEL": "test/approved-model",
+                "MEDISCRIBE_OPENROUTER_STT_PROFILE": "whisper",
+            },
+        ):
+            self.assertEqual(_transcription_model(args, parser), "test/approved-model")
 
     @staticmethod
     def _response(payload: dict[str, object]) -> mock.MagicMock:

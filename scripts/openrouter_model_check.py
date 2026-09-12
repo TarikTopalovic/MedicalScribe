@@ -39,7 +39,7 @@ def main() -> None:
     )
     model_choice.add_argument(
         "--transcription-model",
-        help="Explicit OpenRouter STT model ID; overrides no profile because they are exclusive.",
+        help="Explicit OpenRouter STT model ID for a controlled comparison.",
     )
     parser.add_argument("--draft-model")
     parser.add_argument("--skip-draft", action="store_true")
@@ -102,7 +102,12 @@ def _transcription_model(args: argparse.Namespace, parser: argparse.ArgumentPars
 
     if args.transcription_model:
         return args.transcription_model
-    profile = args.stt_profile or os.getenv("MEDISCRIBE_OPENROUTER_STT_PROFILE", "")
+    if args.stt_profile:
+        return resolve_stt_profile(args.stt_profile)
+    configured_model = os.getenv("MEDISCRIBE_OPENROUTER_TRANSCRIPTION_MODEL", "").strip()
+    if configured_model:
+        return configured_model
+    profile = os.getenv("MEDISCRIBE_OPENROUTER_STT_PROFILE", "")
     if not profile:
         parser.error("choose --stt-profile mai|whisper or provide --transcription-model")
     try:
