@@ -1,17 +1,9 @@
 # MediScribe
 
-Privacy-first medical documentation assistant.
+Privacy-first Bosnian medical documentation prototypes. The default workflow
+keeps transcription local; OpenRouter MAI or Whisper is an explicit optional
+cloud comparison path. Every generated note is an unsigned draft requiring
+clinician review.
 
-This repository currently contains only the initial project structure. Frontend and backend implementation will be added later.
-
-## Structure
-
-```text
-mediscribe/
-├── backend/       Backend application
-├── frontend/      Frontend application
-├── docs/          Product and technical documentation
-├── scripts/       Development and maintenance scripts
-└── tests/         Cross-application and end-to-end tests
-```
-
+See [backend/README.md](backend/README.md) for the Python transcription core
+and [docs/README.md](docs/README.md) for the basic browser prototype.
