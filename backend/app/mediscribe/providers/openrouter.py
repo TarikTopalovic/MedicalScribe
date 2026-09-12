@@ -29,6 +29,7 @@ from ..models import (
 )
 
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+OPENROUTER_EU_API_BASE = "https://eu.openrouter.ai/api/v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +38,9 @@ class OpenRouterSettings:
 
     api_key: str = field(repr=False)
     allow_remote_processing: bool = False
+    data_classification: str = "synthetic"
+    eu_in_region: bool = False
+    dpa_approved: bool = False
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
@@ -44,6 +48,12 @@ class OpenRouterSettings:
             raise ValueError("OPENROUTER_API_KEY is required for the OpenRouter provider")
         if not self.allow_remote_processing:
             raise ValueError("Set MEDISCRIBE_ALLOW_REMOTE_PROCESSING=true to enable OpenRouter")
+        if self.data_classification not in {"synthetic", "clinical"}:
+            raise ValueError("Cloud data classification must be synthetic or clinical")
+        if self.data_classification == "clinical" and not self.eu_in_region:
+            raise ValueError("Clinical cloud processing requires EU in-region routing")
+        if self.data_classification == "clinical" and not self.dpa_approved:
+            raise ValueError("Clinical cloud processing requires an approved processor agreement")
         if self.timeout_seconds <= 0:
             raise ValueError("OpenRouter timeout must be positive")
 
@@ -54,7 +64,16 @@ class OpenRouterSettings:
             allow_remote_processing=(
                 os.getenv("MEDISCRIBE_ALLOW_REMOTE_PROCESSING", "").lower() == "true"
             ),
+            data_classification=os.getenv(
+                "MEDISCRIBE_CLOUD_DATA_CLASSIFICATION", "synthetic"
+            ).lower(),
+            eu_in_region=(os.getenv("MEDISCRIBE_OPENROUTER_EU_ONLY", "").lower() == "true"),
+            dpa_approved=(os.getenv("MEDISCRIBE_OPENROUTER_DPA_APPROVED", "").lower() == "true"),
         )
+
+    @property
+    def api_base(self) -> str:
+        return OPENROUTER_EU_API_BASE if self.eu_in_region else OPENROUTER_API_BASE
 
 
 class OpenRouterClient:
@@ -73,7 +92,7 @@ class OpenRouterClient:
     ) -> dict[str, Any]:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
         request = Request(
-            f"{OPENROUTER_API_BASE}{path}",
+            f"{self.settings.api_base}{path}",
             data=body,
             headers={
                 "Authorization": f"Bearer {self.settings.api_key}",
@@ -93,7 +112,7 @@ class OpenRouterClient:
         provider: str,
     ) -> dict[str, Any]:
         request = Request(
-            f"{OPENROUTER_API_BASE}{path}",
+            f"{self.settings.api_base}{path}",
             headers={"Authorization": f"Bearer {self.settings.api_key}"},
             method="GET",
         )
@@ -111,20 +130,30 @@ class OpenRouterClient:
                 payload = json.loads(response.read().decode("utf-8"))
         except HTTPError as error:
             payment_required = error.code == 402
+            eu_access_denied = self.settings.eu_in_region and error.code in {401, 403}
+            error.close()
             raise ProviderError(
                 code=(
                     ProviderErrorCode.PAYMENT_REQUIRED
                     if payment_required
+                    else ProviderErrorCode.COMPLIANCE_BLOCKED
+                    if eu_access_denied
                     else self._code_for_stage(stage)
                 ),
                 message=(
                     "OpenRouter requires available account credit for this model"
                     if payment_required
+                    else "OpenRouter EU in-region routing is unavailable for this account"
+                    if eu_access_denied
                     else f"OpenRouter returned HTTP {error.code}"
                 ),
                 stage=stage,
                 provider=provider,
-                retryable=not payment_required and (error.code >= 500 or error.code == 429),
+                retryable=(
+                    not payment_required
+                    and not eu_access_denied
+                    and (error.code >= 500 or error.code == 429)
+                ),
             ) from error
         except (OSError, URLError, TimeoutError, json.JSONDecodeError) as error:
             raise ProviderError(
@@ -143,6 +172,11 @@ class OpenRouterClient:
             )
         return payload
 
+    def privacy_provider_preferences(self) -> dict[str, bool | str]:
+        """Attach the strictest per-request privacy controls OpenRouter exposes."""
+
+        return {"zdr": True, "data_collection": "deny"}
+
     @staticmethod
     def _code_for_stage(stage: ProcessingStage) -> ProviderErrorCode:
         return (
@@ -154,8 +188,9 @@ class OpenRouterClient:
     def list_transcription_models(self) -> tuple[str, ...]:
         """Return currently available STT model IDs for deliberate user selection."""
 
+        path = "/models/user" if self.settings.eu_in_region else "/models?output_modalities=transcription"
         payload = self.get_json(
-            "/models?output_modalities=transcription",
+            path,
             stage=ProcessingStage.RECEIVED,
             provider="openrouter",
         )
@@ -165,7 +200,16 @@ class OpenRouterClient:
         return tuple(
             item["id"]
             for item in data
-            if isinstance(item, dict) and isinstance(item.get("id"), str)
+            if isinstance(item, dict)
+            and isinstance(item.get("id"), str)
+            and (
+                not self.settings.eu_in_region
+                or (
+                    isinstance(item.get("architecture"), dict)
+                    and "transcription"
+                    in item["architecture"].get("output_modalities", [])
+                )
+            )
         )
 
 
@@ -194,6 +238,7 @@ class OpenRouterTranscriptionProvider:
                 "temperature": 0,
                 "response_format": "verbose_json",
                 "timestamp_granularities": ["segment"],
+                "provider": self.client.privacy_provider_preferences(),
             },
             stage=ProcessingStage.TRANSCRIBING,
             provider=self.name,
@@ -321,6 +366,7 @@ class OpenRouterBosnianDraftGenerator:
                 "model": self.model,
                 "temperature": 0,
                 "max_tokens": 800,
+                "provider": self.client.privacy_provider_preferences(),
                 "messages": [
                     {
                         "role": "system",

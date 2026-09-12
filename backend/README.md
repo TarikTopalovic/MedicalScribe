@@ -103,6 +103,14 @@ sent to the selected remote models. It is separate from the local providers and
 must not be used with patient data unless the privacy, consent, retention, and
 clinical-governance requirements have been approved.
 
+For synthetic testing, every request enforces OpenRouter's per-request Zero
+Data Retention and `data_collection: deny` controls. For clinical data, the
+provider fails closed unless its mode is `clinical`, EU in-region routing is
+enabled, and the organisation declares that its processor agreement is
+approved. This is a technical gate, not legal certification: obtain legal/DPO
+approval, complete a DPIA, verify the provider/model's current terms, and turn
+off OpenRouter input/output logging in the account before use.
+
 Keep the key only in the current shell or a secret manager, never in a tracked
 file. First list the currently available STT models (this request sends no
 recording):
@@ -110,6 +118,7 @@ recording):
 ```bash
 export OPENROUTER_API_KEY='set-this-in-your-shell'
 export MEDISCRIBE_ALLOW_REMOTE_PROCESSING=true
+export MEDISCRIBE_CLOUD_DATA_CLASSIFICATION=synthetic
 python -m scripts.openrouter_model_check --list-stt-models
 ```
 

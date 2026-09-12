@@ -49,6 +49,7 @@ class OpenRouterProviderTests(unittest.TestCase):
         payload = json.loads(request.data)
         self.assertEqual(payload["model"], "test/stt-model")
         self.assertEqual(payload["language"], "bs")
+        self.assertEqual(payload["provider"], {"zdr": True, "data_collection": "deny"})
         self.assertTrue(base64.b64decode(payload["input_audio"]["data"]).startswith(b"RIFF"))
         self.assertNotIn("test-key-not-a-secret", request.data.decode())
         self.assertEqual(segments[0].text, "Dobar dan.")
@@ -109,6 +110,51 @@ class OpenRouterProviderTests(unittest.TestCase):
                 )
 
         self.assertEqual(raised.exception.code, ProviderErrorCode.PAYMENT_REQUIRED)
+        self.assertFalse(raised.exception.retryable)
+
+    def test_clinical_cloud_mode_fails_closed_without_eu_routing_and_dpa(self) -> None:
+        with self.assertRaisesRegex(ValueError, "EU in-region"):
+            OpenRouterSettings(
+                "test-key-not-a-secret",
+                allow_remote_processing=True,
+                data_classification="clinical",
+            )
+        with self.assertRaisesRegex(ValueError, "processor agreement"):
+            OpenRouterSettings(
+                "test-key-not-a-secret",
+                allow_remote_processing=True,
+                data_classification="clinical",
+                eu_in_region=True,
+            )
+
+    def test_clinical_cloud_mode_uses_eu_endpoint_after_prerequisites(self) -> None:
+        settings = OpenRouterSettings(
+            "test-key-not-a-secret",
+            allow_remote_processing=True,
+            data_classification="clinical",
+            eu_in_region=True,
+            dpa_approved=True,
+        )
+
+        self.assertTrue(settings.api_base.startswith("https://eu.openrouter.ai/"))
+
+    def test_missing_eu_entitlement_blocks_clinical_routing(self) -> None:
+        eu_client = OpenRouterClient(
+            OpenRouterSettings(
+                "test-key-not-a-secret",
+                allow_remote_processing=True,
+                data_classification="synthetic",
+                eu_in_region=True,
+            )
+        )
+        with mock.patch(
+            "backend.app.mediscribe.providers.openrouter.urlopen",
+            side_effect=HTTPError("https://eu.openrouter.ai", 403, "Forbidden", {}, None),
+        ):
+            with self.assertRaisesRegex(ProviderError, "EU in-region routing") as raised:
+                eu_client.list_transcription_models()
+
+        self.assertEqual(raised.exception.code, ProviderErrorCode.COMPLIANCE_BLOCKED)
         self.assertFalse(raised.exception.retryable)
 
     @staticmethod
