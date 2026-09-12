@@ -15,6 +15,7 @@ class ProviderErrorCode(str, Enum):
     UNSUPPORTED_PROVIDER = "unsupported_provider"
     TRANSCRIPTION_FAILED = "transcription_failed"
     GENERATION_FAILED = "generation_failed"
+    PAYMENT_REQUIRED = "payment_required"
     THERMAL_LIMIT = "thermal_limit"
     TIMEOUT = "timeout"
 

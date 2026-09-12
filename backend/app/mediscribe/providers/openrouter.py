@@ -110,12 +110,21 @@ class OpenRouterClient:
             with urlopen(request, timeout=self.settings.timeout_seconds) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except HTTPError as error:
+            payment_required = error.code == 402
             raise ProviderError(
-                code=self._code_for_stage(stage),
-                message=f"OpenRouter returned HTTP {error.code}",
+                code=(
+                    ProviderErrorCode.PAYMENT_REQUIRED
+                    if payment_required
+                    else self._code_for_stage(stage)
+                ),
+                message=(
+                    "OpenRouter requires available account credit for this model"
+                    if payment_required
+                    else f"OpenRouter returned HTTP {error.code}"
+                ),
                 stage=stage,
                 provider=provider,
-                retryable=error.code >= 500 or error.code == 429,
+                retryable=not payment_required and (error.code >= 500 or error.code == 429),
             ) from error
         except (OSError, URLError, TimeoutError, json.JSONDecodeError) as error:
             raise ProviderError(

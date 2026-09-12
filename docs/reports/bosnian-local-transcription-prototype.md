@@ -116,6 +116,11 @@ key and a consented Bosnian recording.
 This path is not local and must not be used with patient audio or text until
 consent, retention, data-processing, and clinical-governance requirements are
 approved. The key is read only from `OPENROUTER_API_KEY` at runtime and is not
-written to source, output, or Git. HTTP behavior is covered by mocked tests;
-no live request was made from this development environment because no runtime
-key was configured.
+written to source, output, or Git. HTTP behavior is covered by mocked tests.
+
+After the runtime key was configured, model discovery successfully returned 21
+STT models. A real request with a short synthetic Bosnian WAV to
+`openai/whisper-large-v3` reached OpenRouter but returned HTTP 402 before
+transcription, so no model quality or latency result is available. The provider
+now returns a non-retryable `payment_required` error with a clear message
+instead of retrying billable requests.

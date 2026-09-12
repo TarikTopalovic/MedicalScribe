@@ -128,3 +128,6 @@ and call the remote provider once a silence boundary is detected; this gives
 utterance-level near-real-time behavior without repeated partial uploads.
 OpenRouter documents its STT endpoint and model discovery at
 https://openrouter.ai/docs/guides/overview/multimodal/stt.
+
+The account must have credit or model entitlement. A 402 response is surfaced
+as `payment_required` and no automatic retries are made.

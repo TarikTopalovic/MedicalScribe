@@ -4,8 +4,10 @@ import base64
 import json
 import unittest
 from unittest import mock
+from urllib.error import HTTPError
 
-from backend.app.mediscribe.models import AudioChunk, TranscriptSegment
+from backend.app.mediscribe.errors import ProviderError, ProviderErrorCode
+from backend.app.mediscribe.models import AudioChunk, ProcessingStage, TranscriptSegment
 from backend.app.mediscribe.providers.openrouter import (
     OpenRouterBosnianDraftGenerator,
     OpenRouterClient,
@@ -92,6 +94,22 @@ class OpenRouterProviderTests(unittest.TestCase):
         self.assertEqual(result.note.subjective, "Pacijent navodi kašalj.")
         self.assertEqual(result.evidence[0].segment_ids, ("final-1",))
         self.assertIn("Nacrt generisan putem vanjskog servisa; potrebna je provjera kliničara.", result.note.warnings)
+
+    def test_payment_requirement_is_explained_without_retrying(self) -> None:
+        with mock.patch(
+            "backend.app.mediscribe.providers.openrouter.urlopen",
+            side_effect=HTTPError("https://openrouter.ai", 402, "Payment Required", {}, None),
+        ):
+            with self.assertRaisesRegex(ProviderError, "available account credit") as raised:
+                self.client.post_json(
+                    "/audio/transcriptions",
+                    {"model": "test/stt-model"},
+                    stage=ProcessingStage.TRANSCRIBING,
+                    provider="openrouter-stt",
+                )
+
+        self.assertEqual(raised.exception.code, ProviderErrorCode.PAYMENT_REQUIRED)
+        self.assertFalse(raised.exception.retryable)
 
     @staticmethod
     def _response(payload: dict[str, object]) -> mock.MagicMock:
