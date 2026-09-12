@@ -12,6 +12,8 @@ venv/
 dist/
 build/
 .next/
+desktop/renderer/
+desktop/release/
 
 # Python
 __pycache__/

@@ -1,0 +1,21 @@
+services:
+  mediscribe-api:
+    build:
+      context: ./backend
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      PORT: "3001"
+      FRONTEND_URL: "app://mediscribe"
+    ports:
+      - "127.0.0.1:3001:3001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: unless-stopped

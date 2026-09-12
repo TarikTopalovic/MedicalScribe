@@ -1,6 +1,6 @@
 # MediScribe UI implementation specification
 
-This document defines the browser UI still required to turn the current
+This document defines the Electron desktop UI still required to turn the current
 prototype into a usable clinician-facing workflow. It does not authorize a
 clinical deployment: every transcription and note remains a reviewable draft.
 
@@ -173,7 +173,7 @@ security and data-governance requirements are implemented.
 
 ## 8. API/UI contract still to implement
 
-The browser needs a versioned session API in front of the current provider
+The desktop renderer needs a versioned session API in front of the current provider
 core. Implement these endpoints or equivalent WebSocket events:
 
 - `GET /api/config` — safe capability flags, mode availability, profile names,

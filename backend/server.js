@@ -16,8 +16,19 @@ const structureRouter = require("./routes/structure_local");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// The UI is local by default. Configure a different allowed origin explicitly.
-app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173" }));
+// Electron's packaged renderer has no HTTP Origin. The API is Docker-bound to
+// loopback, while browser development stays limited to the configured origin.
+const allowedOrigins = new Set([
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "null",
+]);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error("CORS origin is not allowed"));
+  },
+}));
 app.use(express.json());
 
 // Rute aplikacije

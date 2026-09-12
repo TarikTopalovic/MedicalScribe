@@ -44,3 +44,28 @@ consent, and governance work.
 
 The full implementation backlog and acceptance criteria are in
 [ui-implementation-spec.md](ui-implementation-spec.md).
+
+## Desktop and Docker deployment
+
+Run the API bridge in Docker, bound to the local device only:
+
+```bash
+docker compose up --build -d
+```
+
+Then build and start the Chromium desktop app in [../desktop](../desktop):
+
+```bash
+cd desktop
+npm install
+npm run build:renderer
+npm start
+```
+
+The Electron shell is a device application, not a regular browser tab. It is
+kept outside Docker so its microphone and display permissions remain controlled
+by the host operating system; only the API is containerized. See
+[../desktop/README.md](../desktop/README.md) for packaging instructions.
+
+The Compose file has been syntax-validated. A running Docker daemon is required
+to build or start the container with the command above.

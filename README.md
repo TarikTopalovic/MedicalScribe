@@ -6,4 +6,5 @@ cloud comparison path. Every generated note is an unsigned draft requiring
 clinician review.
 
 See [backend/README.md](backend/README.md) for the Python transcription core
-and [docs/README.md](docs/README.md) for the basic browser prototype.
+and [docs/README.md](docs/README.md) for the Electron desktop app and Docker
+deployment.
