@@ -24,9 +24,9 @@ npm run build
 ```
 
 Never edit `src/generated/` or the export by hand — the next regeneration
-overwrites both. If a redesign adds a new value to the markup, the build fails
-on the missing key and `VIEW_MODEL_KEYS` in `Screen.jsx` lists everything the
-design expects; add it in `viewModel.js`.
+overwrites both. If a redesign adds a new value to the markup it arrives as an
+extra entry in `VIEW_MODEL_KEYS` at the top of `Screen.jsx`, which lists every
+value the design expects; produce it in `viewModel.js` or it renders empty.
 
 `npm run design:check` regenerates and fails if the committed output has
 drifted from the export. Run it in CI to keep the two in step.
