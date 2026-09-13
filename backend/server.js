@@ -11,6 +11,7 @@ const express = require("express");
 const cors = require("cors");
 
 const transcribeRouter = require("./routes/transcribe_openrouter");
+const localTranscribeRouter = require("./routes/transcribe_local");
 const structureRouter = require("./routes/structure_local");
 
 const app = express();
@@ -23,9 +24,20 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "null",
 ]);
+
+function isAllowedRendererOrigin(origin) {
+  if (!origin || allowedOrigins.has(origin)) return true;
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "http:" && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]");
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    if (isAllowedRendererOrigin(origin)) return callback(null, true);
     return callback(new Error("CORS origin is not allowed"));
   },
 }));
@@ -33,24 +45,27 @@ app.use(express.json());
 
 // Rute aplikacije
 app.use("/api/transcribe", transcribeRouter);
+app.use("/api/transcribe/local", localTranscribeRouter);
 app.use("/api/structure", structureRouter);
 
 // Safe capability report for the desktop renderer. It deliberately contains no
 // token, model-provider response, device path, or patient/session data.
 app.get("/api/config", (req, res) => {
   const cloud = transcribeRouter.capabilities();
+  const local = localTranscribeRouter.capabilities();
   res.json({
     version: 1,
     language: "bs",
     local: {
-      available: false,
-      reason: "Lokalni Python transkriber još nije povezan s desktop API-jem.",
+      available: Boolean(local.available),
+      reason: local.available ? "" : local.error,
     },
     cloud: {
       available: Boolean(cloud.available),
       reason: cloud.available ? "" : cloud.error,
       profiles: ["mai", "whisper"],
       defaultProfile: cloud.defaultProfile || "mai",
+      profileSelectionAvailable: !Boolean(cloud.configured),
       routeLabel: cloud.euOnly ? "EU ruta" : "standardna ruta",
       routeDescription: cloud.euOnly
         ? "OpenRouter EU ruta; završena izjava se šalje van uređaja."

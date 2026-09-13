@@ -1,17 +1,21 @@
 # MediScribe desktop renderer
 
 This renderer packages the downloaded `MediScribe.dc.html` Design Canvas
-export without redesigning it. The exact export, design system, and runtime
-are in `public/design/`; `index.html` displays it directly in Electron.
-React is bundled locally so the export does not fetch UI code from a CDN.
+layout in Electron. The exact export, design system, and runtime are in
+`public/design/`; `index.html` displays it directly. React is bundled locally
+so the renderer does not fetch UI code from a CDN.
 
-The exported screens are a visual interactive prototype and include simulated
-accounts, visits, transcript segments, and note actions. They are not yet
-connected to `backend/server.js`, microphone capture, OpenRouter, or Supabase.
-Do not treat demo patient data, signatures, or status indicators as real
-clinical data processing.
+The active workflow is connected to the loopback Node API: explicit consent,
+microphone selection, one completed utterance, MAI/Whisper cloud selection,
+final transcript review/editing, deterministic local SOAP drafting, copying,
+and clearing the in-memory session. No audio, transcript, or draft is written
+to browser storage. Demo accounts, permanent reports, and signing were removed
+from the active flow; persistent authenticated records require separate
+Supabase Auth/server work.
 
-The separate Node API remains available for its existing approved-cloud
-transcription and deterministic local-draft routes. See
-[../docs/README.md](../docs/README.md) for Docker/Electron startup and the
-external-processing guard.
+The local Whisper option is host-only and opt-in. When enabled it normalizes a
+finished utterance with FFmpeg, performs exactly one guarded `whisper.cpp`
+decode, applies the existing 85°C thermal stop, and removes temporary audio.
+It is intentionally unavailable in the lightweight Docker API image, which
+does not contain the local models. See [../docs/README.md](../docs/README.md)
+for startup and the external-processing guard.

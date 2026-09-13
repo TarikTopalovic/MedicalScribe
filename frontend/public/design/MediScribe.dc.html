@@ -288,10 +288,10 @@
         </div>
 
         <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:14px 17px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="width:36px;height:36px;flex:none;border-radius:50%;background:#F0F0F3;color:#6E6E73;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700">AH</div>
+          <div style="width:36px;height:36px;flex:none;border-radius:50%;background:#F0F0F3;color:#6E6E73;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">+</div>
           <div style="flex:1;min-width:150px">
-            <div style="font-size:15px;font-weight:600;letter-spacing:-0.02em">Amina Hodžić · 34 g.</div>
-            <div style="font-size:12.5px;color:#86868B;margin-top:2px">Uporan kašalj i temperatura · 10:15 · {{ activeDept }}</div>
+            <div style="font-size:15px;font-weight:600;letter-spacing:-0.02em">Nova izjava</div>
+            <div style="font-size:12.5px;color:#86868B;margin-top:2px">Bez identifikatora pacijenta · trenutna in-memory sesija · {{ activeDept }}</div>
           </div>
           <div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#6E6E73">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6E6E73" stroke-width="2.1" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v4"></path><path d="M3 3l18 18"></path></svg>
@@ -358,7 +358,7 @@
       <div data-screen-label="Snimanje" style="display:flex;flex-direction:column;gap:14px">
         <div>
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#86868B">Korak 2 od 3 · snimanje</div>
-          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Amina Hodžić · sesija u toku</div>
+          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Nova izjava · sesija u toku</div>
         </div>
 
         <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:14px">
@@ -478,7 +478,7 @@
       <div data-screen-label="Pregled i odobravanje" style="display:flex;flex-direction:column;gap:14px">
         <div>
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#86868B">Korak 3 od 3 · pregled i odobrenje</div>
-          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Amina Hodžić · 12.09.2026.</div>
+          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Trenutna izjava · pregled</div>
           <div style="font-size:13px;color:#6E6E73;margin-top:4px">{{ activeName }} · {{ activeDept }} · Šablon: SOAP ambulantni · {{ modeShort }}</div>
         </div>
 
@@ -744,7 +744,7 @@
             <label style="display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Mikrofon
               <select value="{{ mic }}" onChange="{{ onMicChange }}" disabled="{{ captureBusy }}" style="font-size:14px;padding:10px 12px;border:1px solid #D9D9DE;border-radius:11px;background:#fff;color:#1D1D1F;width:100%;text-transform:none;letter-spacing:normal;font-weight:500">
                 <sc-for list="{{ mics }}" as="m" hint-placeholder-count="2">
-                  <option value="{{ m.v }}">{{ m.v }}</option>
+                  <option value="{{ m.id }}">{{ m.v }}</option>
                 </sc-for>
               </select>
             </label>
@@ -1417,6 +1417,240 @@ class Component extends DCLogic {
     };
   }
 }
+
+/* Real desktop-session implementation. The Design Canvas template above is
+ * retained; this layer replaces its sample records and timer simulation with
+ * one in-memory microphone session and the loopback API. */
+const MEDISCRIBE_API = 'http://localhost:3001';
+const PROFILE_IDS = { 'MAI Transcribe 2': 'mai', 'Whisper Large v3': 'whisper' };
+const emptyNote = () => ['', '', '', ''];
+
+function safeError(message) {
+  const value = String(message || '');
+  if (value.includes('Nedostaje OpenRouter kredit')) return { title: 'Vanjska transkripcija nije dostupna', text: 'Nedostaje kredit za odabrani obrađivač. Zvučni zapis nije automatski ponovo poslan.', local: true };
+  if (value.includes('Klinička cloud obrada') || value.includes('EU')) return { title: 'Klinička EU ruta nije dostupna', text: 'Vanjska obrada je blokirana dok EU ruta i ugovor o obradi podataka nisu aktivni.', local: true };
+  if (value.includes('Potvrda')) return { title: 'Vanjska obrada nije potvrđena', text: 'Prije snimanja je potrebna jasna potvrda za slanje završene izjave.', local: true };
+  if (value.includes('mikrofon') || value.includes('Mikrofon')) return { title: 'Mikrofon nije dostupan', text: 'Provjerite dozvolu mikrofona i odabrani ulazni uređaj.', local: false };
+  return { title: 'Obrada nije uspjela', text: 'Zahtjev nije automatski ponovljen. Ručno uneseni tekst ostaje u memoriji trenutne sesije.', local: false };
+}
+
+function clockFrom(startedAt, finishedAt) {
+  if (!startedAt) return '00:00';
+  return mmss(Math.max(0, Math.floor(((finishedAt || Date.now()) - startedAt) / 1000)));
+}
+
+Component.prototype.componentDidMount = function () {
+  this.recorder = null;
+  this.stream = null;
+  this.chunks = [];
+  this.sessionNonce = 0;
+  this.start = () => this.startCapture();
+  this.finish = () => this.finishCapture();
+  this.clearSession = () => this.resetSession();
+  this.setState({
+    screen: 'consent',
+    accounts: [{ name: 'Trenutna sesija', dept: 'Nije postavljeno', depts: ['Nije postavljeno'] }],
+    activeAcc: 0,
+    consent: [false, false, false],
+    mode: 'cloud',
+    cloudProfile: 'MAI Transcribe 2',
+    cloudApproved: false,
+    cloudAvailable: false,
+    localAvailable: false,
+    configReady: false,
+    localReason: 'Lokalni transkriber nije povezan s desktop API-jem.',
+    cloudReason: 'Provjeravam konfiguraciju vanjske obrade…',
+    cloudRoute: 'vanjska ruta',
+    mics: [{ v: 'Zadani mikrofon', id: '' }],
+    mic: '',
+    segmentsData: [],
+    note: emptyNote(),
+    noteTouched: {},
+    draftWarnings: [],
+    elapsedStartedAt: null,
+    elapsedFinishedAt: null,
+    error: null,
+    approved: false,
+    reports: []
+  });
+  this.loadCapabilities();
+  this.loadMicrophones();
+};
+
+Component.prototype.componentWillUnmount = function () {
+  this.stopTracks();
+  this.clearTimers();
+};
+
+Component.prototype.loadCapabilities = async function () {
+  try {
+    const response = await fetch(MEDISCRIBE_API + '/api/config');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.greska);
+    this.setState((s) => ({
+      configReady: true,
+      cloudAvailable: !!data.cloud?.available,
+      localAvailable: !!data.local?.available,
+      cloudReason: data.cloud?.reason || '',
+      localReason: data.local?.reason || '',
+      cloudRoute: data.cloud?.routeLabel || 'vanjska ruta',
+      profileSelectionAvailable: data.cloud?.profileSelectionAvailable !== false,
+      cloudProfile: data.cloud?.defaultProfile === 'whisper' ? 'Whisper Large v3' : s.cloudProfile,
+      mode: data.cloud?.available ? s.mode : (data.local?.available ? 'local' : s.mode)
+    }));
+  } catch (error) {
+    this.setState({ configReady: true, cloudAvailable: false, cloudReason: 'Nije moguće povezati se s lokalnim servisom.', error: safeError(error.message) });
+  }
+};
+
+Component.prototype.loadMicrophones = async function () {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter((device) => device.kind === 'audioinput').map((device, index) => ({ v: device.label || ('Mikrofon ' + (index + 1)), id: device.deviceId }));
+    if (mics.length) this.setState({ mics, mic: mics[0].id });
+  } catch (_) { /* Labels can remain unavailable until microphone permission. */ }
+};
+
+Component.prototype.stopTracks = function () {
+  if (this.stream) this.stream.getTracks().forEach((track) => track.stop());
+  this.stream = null;
+};
+
+Component.prototype.startCapture = async function () {
+  const s = this.state;
+  if (s.mode === 'cloud' && !s.cloudAvailable) return this.setState({ error: safeError(s.cloudReason || 'Vanjska obrada nije dostupna.') });
+  if (s.mode === 'local' && !s.localAvailable) return this.setState({ error: safeError(s.localReason || 'Lokalna obrada nije dostupna.') });
+  if (!s.consent.every(Boolean) || (s.mode === 'cloud' && !s.cloudApproved)) return this.setState({ error: safeError('Potvrda za vanjsku obradu je obavezna.') });
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return this.setState({ error: safeError('Mikrofon nije podržan.') });
+  try {
+    const audio = s.mic ? { deviceId: { exact: s.mic } } : true;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio });
+    const preferred = 'audio/webm;codecs=opus';
+    const recorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(preferred) ? { mimeType: preferred } : undefined);
+    const nonce = ++this.sessionNonce;
+    this.chunks = [];
+    this.stream = stream;
+    this.recorder = recorder;
+    recorder.ondataavailable = (event) => { if (event.data.size) this.chunks.push(event.data); };
+    recorder.onstop = () => this.submitUtterance(recorder, nonce);
+    recorder.start();
+    this.setState({ screen: 'visit', running: true, phase: 'provisional', finished: false, segmentsData: [], note: emptyNote(), noteTouched: {}, draftWarnings: [], manualText: '', noteStale: false, error: null, elapsedStartedAt: Date.now(), elapsedFinishedAt: null });
+    await this.loadMicrophones();
+  } catch (error) {
+    this.setState({ error: safeError('Mikrofon nije dostupan: ' + error.message), running: false, phase: null });
+  }
+};
+
+Component.prototype.finishCapture = function () {
+  if (this.recorder?.state === 'recording') {
+    this.setState({ running: false, phase: 'boundary', elapsedFinishedAt: Date.now() });
+    this.recorder.stop();
+  }
+};
+
+Component.prototype.submitUtterance = async function (recorder, nonce) {
+  const audio = new Blob(this.chunks, { type: recorder.mimeType || 'audio/webm' });
+  this.chunks = [];
+  this.stopTracks();
+  if (nonce !== this.sessionNonce) return;
+  if (!audio.size) return this.setState({ phase: null, error: safeError('Mikrofon nije snimio zvuk.') });
+  this.setState({ phase: 'quality' });
+  try {
+    const form = new FormData();
+    form.append('audio', audio, 'izjava.webm');
+    const local = this.state.mode === 'local';
+    if (!local) {
+      form.append('remote_processing_approved', 'true');
+      form.append('profile', PROFILE_IDS[this.state.cloudProfile] || 'mai');
+    }
+    const response = await fetch(MEDISCRIBE_API + (local ? '/api/transcribe/local' : '/api/transcribe'), { method: 'POST', body: form });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.greska);
+    const now = this.state.elapsedFinishedAt || Date.now();
+    const fallbackEnd = Math.max(0, Math.floor((now - this.state.elapsedStartedAt) / 1000));
+    const segments = Array.isArray(data.segments) && data.segments.length
+      ? data.segments.map((segment) => ({ sp: segment.speaker || 'Izjava', t: String(segment.text || '').trim(), start: Math.max(0, Math.floor((segment.start_ms || 0) / 1000)), end: Math.max(0, Math.floor((segment.end_ms || 0) / 1000)) })).filter((segment) => segment.t)
+      : [{ sp: 'Izjava', t: String(data.text || '').trim(), start: 0, end: fallbackEnd }];
+    this.setState({ phase: 'final', segmentsData: segments });
+    await this.createDraft(String(data.text || '').trim(), nonce);
+  } catch (error) {
+    if (nonce === this.sessionNonce) this.setState({ phase: null, error: safeError(error.message), finished: false });
+  }
+};
+
+Component.prototype.fullTranscript = function () {
+  const segments = this.state.segmentsData || [];
+  const text = segments.map((segment, index) => this.state.segOverride?.[index] ?? segment.t).filter(Boolean).join(' ').trim();
+  return [text, String(this.state.manualText || '').trim()].filter(Boolean).join('\n').trim();
+};
+
+Component.prototype.createDraft = async function (text, nonce = this.sessionNonce) {
+  const transcript = String(text || this.fullTranscript()).trim();
+  if (!transcript) return;
+  this.setState({ phase: 'draft' });
+  try {
+    const response = await fetch(MEDISCRIBE_API + '/api/structure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transcript }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.greska);
+    if (nonce !== this.sessionNonce) return;
+    this.setState({ phase: null, finished: true, note: [data.subjective || '', data.objective || '', data.assessment || '', data.plan || ''], noteTouched: {}, draftWarnings: Array.isArray(data.warnings) ? data.warnings : [], noteStale: false });
+  } catch (error) {
+    if (nonce === this.sessionNonce) this.setState({ phase: null, error: safeError(error.message) });
+  }
+};
+
+Component.prototype.resetSession = function () {
+  ++this.sessionNonce;
+  if (this.recorder?.state === 'recording') this.recorder.stop();
+  this.stopTracks();
+  this.clearTimers();
+  this.setState({ screen: 'consent', consent: [false, false, false], cloudApproved: false, running: false, phase: null, finished: false, segmentsData: [], note: emptyNote(), noteTouched: {}, draftWarnings: [], manualText: '', noteStale: false, error: null, confirm: null, elapsedStartedAt: null, elapsedFinishedAt: null, approved: false, settingsOpen: false });
+};
+
+Component.prototype.renderVals = function () {
+  const s = this.state;
+  const cloud = s.mode === 'cloud';
+  const captureBusy = !!s.running || !!s.phase;
+  const segmentsData = s.segmentsData || [];
+  const shown = segmentsData.length - 1;
+  const err = s.error;
+  const active = (s.accounts && s.accounts[0]) || { name: 'Trenutna sesija', dept: 'Nije postavljeno', depts: ['Nije postavljeno'] };
+  const note = Array.isArray(s.note) ? s.note : emptyNote();
+  const statusMap = err ? { label: 'Greška', bg: '#FDF3F1', border: '#F6D9D3', fg: '#8E1F14', dot: '#C0281A' } : s.phase ? { label: 'Obrada u toku', bg: '#FCF3E3', border: '#EEDFC2', fg: '#8A5B00', dot: '#C77700' } : cloud ? { label: 'Vanjska obrada', bg: '#E9F2FE', border: '#CFE2FA', fg: '#0058B9', dot: '#0071E3' } : { label: 'Lokalno', bg: '#F0F7F1', border: '#D6EBD9', fg: '#1F7A36', dot: '#30B050' };
+  const modeOptions = [
+    { key: 'local', title: 'Lokalna transkripcija', body: 'Zvuk ostaje na ovom računaru kada lokalni runtime bude povezan.', reason: s.localAvailable ? '' : (s.localReason || 'Lokalna obrada nije dostupna.') },
+    { key: 'cloud', title: 'Vanjska transkripcija (MAI / Whisper)', body: 'Šalje samo završenu izjavu na profil ' + s.cloudProfile + ' (' + (s.cloudRoute || 'vanjska ruta') + ').', reason: s.cloudAvailable ? '' : (s.cloudReason || 'Vanjska obrada nije dostupna.') }
+  ].map((option) => {
+    const available = option.key === 'cloud' ? s.cloudAvailable : s.localAvailable;
+    const on = s.mode === option.key;
+    return { ...option, disabled: !available, settingsDisabled: !available || captureBusy, opacity: available ? 1 : .55, settingsOpacity: !available || captureBusy ? .55 : 1, bg: on ? '#F5F8FD' : '#FBFBFC', border: on ? '#C9DEF8' : '#E9E9EC', ring: on ? '#0071E3' : '#D2D2D7', fill: on ? '#0071E3' : 'transparent', pick: () => this.setState({ mode: option.key, cloudApproved: false }) };
+  });
+  const segments = segmentsData.map((segment, index) => {
+    const editing = s.segEdit === index;
+    return { sp: segment.sp || 'Izjava', t: s.segOverride?.[index] ?? segment.t, color: '#0058B9', span: mmss(segment.start || 0) + ' – ' + mmss(segment.end || 0), warn: '', unknown: false, edited: s.segOverride?.[index] !== undefined, editing, reading: !editing, bg: s.jump === index ? '#F5F8FD' : 'transparent', edit: () => this.setState({ segEdit: index, segDraft: s.segOverride?.[index] ?? segment.t }), fixSpeaker: () => {} };
+  });
+  const noteFields = ['Subjektivno', 'Objektivno', 'Procjena', 'Plan'].map((label, index) => ({ label, text: note[index] || '', rows: index === 2 ? 3 : 4, placeholder: index === 2 ? 'Nacrt je prazan — upišite kliničku procjenu' : 'Nacrt je prazan — upišite sadržaj', touched: !!s.noteTouched?.[index], border: '#D2D2D7', bg: '#FFFFFF', evidence: index === 0 && segments.length ? [{ label: 'Izjava 1', jump: () => this.setState({ jump: 0 }) }] : [], hasEvidence: index === 0 && segments.length > 0, noEvidence: !(index === 0 && segments.length), note: index === 2 ? 'Procjena nije automatski izvedena. Kliničar je mora unijeti i provjeriti.' : '', onInput: (event) => { const value = event.target.value; this.setState((current) => { const next = (current.note || emptyNote()).slice(); next[index] = value; return { note: next, noteTouched: { ...(current.noteTouched || {}), [index]: true } }; }); } }));
+  const flags = (s.draftWarnings || []).map((text, index) => ({ kind: 'Upozorenje nacrta', text, dot: index ? '#C77700' : '#0071E3' }));
+  const consentDone = (s.consent || []).every(Boolean);
+  const canStart = s.configReady && consentDone && ((cloud && s.cloudAvailable && s.cloudApproved) || (!cloud && s.localAvailable));
+  return {
+    isSignin: false, isApp: true, isToday: s.screen === 'today', isConsent: s.screen === 'consent', isVisit: s.screen === 'visit', isReview: s.screen === 'review', isReports: s.screen === 'reports',
+    signIn: this.go('today'), goToday: this.go('today'), goVisit: this.go('visit'), goReview: this.go('review'), goReports: this.go('reports'), showBack: s.screen !== 'today' && s.screen !== 'reports', goBack: this.go('today'),
+    tabs: [{ label: 'Nova sesija', go: this.go('consent'), count: '', live: false, bg: s.screen === 'consent' ? '#1D1D1F' : '#fff', fg: s.screen === 'consent' ? '#fff' : '#1D1D1F', border: s.screen === 'consent' ? '#1D1D1F' : '#E3E3E7' }, { label: 'Pregled', go: this.go('review'), count: '', live: false, bg: s.screen === 'review' ? '#1D1D1F' : '#fff', fg: s.screen === 'review' ? '#fff' : '#1D1D1F', border: s.screen === 'review' ? '#1D1D1F' : '#E3E3E7' }],
+    statusLabel: statusMap.label, statusBg: statusMap.bg, statusBorder: statusMap.border, statusFg: statusMap.fg, statusDot: statusMap.dot, hasDrafts: false, draftsTitle: 'Trenutna sesija', modeShort: cloud ? 'Vanjska · ' + s.cloudProfile : 'Lokalno na uređaju', railNote: cloud ? 'Vanjska obrada: ' + s.cloudProfile + '. Šalju se samo završene izjave.' : 'Lokalna obrada trenutno nije dostupna.',
+    errorActive: !!err, errorTitle: err?.title || '', errorText: err?.text || '', errorOffersLocal: !!(err?.local && s.localAvailable), switchToLocal: () => this.setState({ mode: 'local', error: null }), retryError: () => this.setState({ error: null }), dismissError: () => this.setState({ error: null }),
+    openSettings: () => this.setState({ settingsOpen: true, privacyOpen: false, accountMenuOpen: false }), openPrivacy: () => this.setState({ privacyOpen: true, settingsOpen: false, accountMenuOpen: false }), closeModals: () => this.setState({ settingsOpen: false, privacyOpen: false }), settingsOpen: !!s.settingsOpen, privacyOpen: !!s.privacyOpen, governance: GOVERNANCE, settingsLocked: captureBusy ? 'Način i profil se ne mogu mijenjati dok snimanje ili obrada traje.' : '', routeSummary: cloud ? 'Završene izjave idu na ' + s.cloudProfile + ' · ' + (s.cloudRoute || 'vanjska ruta') + '. Djelimičan zvuk se ne šalje.' : (s.localReason || 'Lokalna obrada nije dostupna.'), thermalText: s.localAvailable ? 'normalno' : 'nedostupno',
+    profileOptions: PROFILES.map((profile) => ({ name: profile, disabled: captureBusy || !s.cloudAvailable || s.profileSelectionAvailable === false, opacity: captureBusy || !s.cloudAvailable || s.profileSelectionAvailable === false ? .55 : 1, bg: s.cloudProfile === profile ? '#0071E3' : '#fff', fg: s.cloudProfile === profile ? '#fff' : '#1D1D1F', border: s.cloudProfile === profile ? '#0071E3' : '#D9D9DE', pick: () => this.setState({ cloudProfile: profile, cloudApproved: false }) })), mics: (s.mics || [{ v: 'Zadani mikrofon', id: '' }]), mic: s.mic, captureBusy, onMicChange: (event) => this.setState({ mic: event.target.value }), errorSims: [],
+    deptOptions: [{ name: active.dept, bg: '#0071E3', fg: '#fff', border: '#0071E3', pick: () => {} }], pwType: 'password', pwHidden: true, pwShown: false, pwLabel: 'Sakrij lozinku', togglePw: () => {}, rulesOpen: !!s.rulesOpen, rulesArrow: s.rulesOpen ? 'rotate(180deg)' : 'none', toggleRules: () => this.setState((current) => ({ rulesOpen: !current.rulesOpen })), toggleRemember: () => {}, rememberMark: '', rememberBg: '#fff', rememberBorder: '#D2D2D7', deptSavedNote: 'Prijava još nije povezana', canAddDept: false, deptPickerOpen: false, deptPickerBg: '#fff', toggleDeptPicker: () => {}, addableDepts: [], accountMenuOpen: false, accountRowBg: '#fff', toggleAccountMenu: () => {}, activeName: active.name, activeDept: active.dept, activeIni: 'TS', activeShort: active.name, accounts: [], addAccount: () => {}, askLogOut: this.ask({ title: 'Obrisati trenutnu sesiju?', body: 'Transkript i nacrt brišu se iz memorije.', label: 'Obriši sesiju', danger: true, action: 'clear' }),
+    consentItems: CONSENT.map((item, index) => ({ title: item.title, body: item.body, mark: s.consent?.[index] ? '✓' : '', bg: s.consent?.[index] ? '#F5F8FD' : '#FBFBFC', border: s.consent?.[index] ? '#C9DEF8' : '#E9E9EC', dotBg: s.consent?.[index] ? '#0071E3' : '#fff', dotBorder: s.consent?.[index] ? '#0071E3' : '#D2D2D7', toggle: () => this.setState((current) => { const consent = (current.consent || []).slice(); consent[index] = !consent[index]; return { consent }; }) })), consentProgress: (s.consent || []).filter(Boolean).length + ' od 3 potvrđeno', modeOptions, cloudChosen: cloud, cloudProfile: s.cloudProfile, cloudRoute: s.cloudRoute || 'vanjska ruta', toggleCloudApproval: () => this.setState((current) => ({ cloudApproved: !current.cloudApproved })), approvalMark: s.cloudApproved ? '✓' : '', approvalBoxBg: s.cloudApproved ? '#0071E3' : '#fff', approvalBoxBorder: s.cloudApproved ? '#0071E3' : '#D2D2D7', startVisit: this.start, startBlocked: !canStart, startBtnBg: canStart ? '#0071E3' : '#C7C7CC', startHint: !s.configReady ? 'Provjeravam lokalni servis…' : !consentDone ? 'Potvrdite sve tri stavke saglasnosti.' : !cloud ? (s.localAvailable ? 'Mikrofon se aktivira nakon pokretanja. Obrada ostaje na uređaju.' : (s.localReason || 'Lokalna obrada nije dostupna.')) : !s.cloudAvailable ? (s.cloudReason || 'Vanjska obrada nije dostupna.') : !s.cloudApproved ? 'Označite potvrdu za vanjsku obradu.' : 'Mikrofon se aktivira nakon pokretanja. Prima: ' + s.cloudProfile + '.',
+    clock: clockFrom(s.elapsedStartedAt, s.elapsedFinishedAt), recLabel: s.running ? 'Snima se' : (s.phase ? PHASES[s.phase] : (s.finished ? 'Izjava završena' : 'Spremno')), recDot: s.running ? '#E0301A' : (s.phase ? '#C77700' : '#C7C7CC'), recAnim: s.running ? 'zpulse 1.2s infinite' : 'none', phaseLabel: s.phase ? PHASES[s.phase] : '', meterBars: [0.4, .85, .6, 1, .5, .75].map((scale, index) => ({ scale: s.running ? 1 : scale * .4, color: s.running ? '#0071E3' : '#DEDEE3', anim: s.running ? 'zbar ' + (620 + index * 90) + 'ms ease-in-out infinite' : 'none' })), meterText: s.running ? 'Nivo zvuka: aktivan' : 'Nivo zvuka: nema signala', finishUtterance: this.finish, finishBlocked: !s.running, finishBtnBg: s.running ? '#1D1D1F' : '#C7C7CC', reviewBlocked: !s.finished, reviewBtnBg: s.finished ? '#0071E3' : '#F7F7F9', reviewBtnFg: s.finished ? '#fff' : '#B0B0B5', reviewBtnBorder: s.finished ? '#0071E3' : '#E9E9EC', captureNotice: cloud ? 'Vanjska obrada: završena izjava ide na ' + s.cloudProfile + ' (' + (s.cloudRoute || 'vanjska ruta') + '). Nema automatskog ponavljanja.' : 'Lokalna obrada: završena izjava ostaje na uređaju. Samo jedan lokalni AI decode može raditi istovremeno.', lines: segments.map((segment) => ({ sp: segment.sp, t: segment.t, color: segment.color, at: segment.span, warn: segment.warn })), lineCount: segments.length + ' segmenata', provisional: s.running ? 'Snimanje je u toku — konačni tekst stiže nakon završetka izjave.' : '', idleNotice: s.running ? '' : 'Mikrofon nije aktivan.', soap: [], progress: segments.length ? '100%' : '0%', flags, noFlags: flags.length === 0,
+    segments, segDraft: s.segDraft || '', onSegInput: (event) => this.setState({ segDraft: event.target.value }), saveSeg: () => this.setState((current) => ({ segOverride: { ...(current.segOverride || {}), [current.segEdit]: current.segDraft }, segEdit: null, noteStale: true })), cancelSeg: () => this.setState({ segEdit: null, segDraft: '' }), confidenceWarning: '', manualOpen: !!s.manualOpen, manualText: s.manualText || '', manualLabel: s.manualOpen ? 'Sakrij ručni tekst' : 'Dodaj ručni tekst', toggleManual: () => this.setState((current) => ({ manualOpen: !current.manualOpen })), onManualInput: (event) => this.setState({ manualText: event.target.value, noteStale: true }), askRepeat: this.ask({ title: 'Ponoviti ovu izjavu?', body: 'Konačni transkript ove izjave će biti obrisan. Zvuk se ne šalje ponovo automatski.', label: 'Ponovi izjavu', danger: false, action: 'repeat' }), askClearSession: this.ask({ title: 'Obrisati trenutnu sesiju?', body: 'Transkript, nacrt i stanje snimanja brišu se iz memorije. Ova radnja se ne može vratiti.', label: 'Obriši sesiju', danger: true, action: 'clear' }),
+    noteFields, noteStale: !!s.noteStale && !!s.finished, noteChip: s.finished ? 'Nacrt · nije zapis' : 'Čeka konačni transkript', noteChipBg: '#FCF3E3', noteChipFg: '#9A5B00', noteMeta: s.finished ? 'Pripremljeno lokalno iz konačnog transkripta · ' + segments.length + ' segmenata' : 'Nacrt nastaje nakon konačnog transkripta', regenerate: () => this.createDraft(), copyDraft: async () => { try { await navigator.clipboard.writeText(noteFields.map((field) => field.label + '\n' + field.text).join('\n\n')); this.setState({ copied: true }); setTimeout(() => this.setState({ copied: false }), 1800); } catch (_) { this.setState({ error: safeError('Kopiranje nije dostupno.') }); } }, copyLabel: s.copied ? 'Kopirano' : 'Kopiraj nacrt', approved: false, notApproved: true, askApprove: () => this.setState({ error: { title: 'Potpis nije dostupan', text: 'Elektronski potpis i trajna pohrana nisu implementirani. Nacrt ostaje samo u memoriji sesije.', local: false } }), approveBlocked: true, approveBtnBg: '#C7C7CC', approveHint: 'Elektronski potpis nije dostupan dok se ne uvedu autentifikacija, politika potpisa i server-side pohrana.', approvedMeta: '', processingRows: [{ k: 'Snimak', v: 'Nije pohranjen' }, { k: 'Transkript', v: 'Memorija sesije' }, { k: 'Obrada', v: cloud ? s.cloudProfile + ' · ' + (s.cloudRoute || 'vanjska ruta') : 'Nedostupno' }, { k: 'Mikrofon', v: (s.mics || []).find((mic) => mic.id === s.mic)?.v || 'Zadani mikrofon' }, { k: 'Toplinska zaštita', v: s.localAvailable ? 'normalno' : 'nedostupno' }],
+    reports: s.finished ? [{ name: 'Trenutna sesija', kind: 'Nacrt u memoriji', date: new Date().toLocaleDateString('bs-BA'), version: 'v1', status: 'Nacrt', chipBg: '#FCF3E3', chipFg: '#9A5B00', bg: '#F5F8FD', select: () => this.setState({ screen: 'review' }) }] : [], history: s.finished ? [{ title: 'Nacrt pripremljen', at: clockFrom(s.elapsedStartedAt, s.elapsedFinishedAt), text: 'Lokalni nacrt je pripremljen iz konačnog transkripta. Nije trajno pohranjen.', dot: '#C77700' }, { title: 'Konačni transkript', at: clockFrom(s.elapsedStartedAt, s.elapsedFinishedAt), text: segments.length + ' segmenata; završena izjava obrađena jednom.', dot: '#0071E3' }] : [], selName: s.finished ? 'Trenutna sesija · memorija' : 'Nema trajno pohranjenih izvještaja', draftCount: s.finished ? 1 : 0, visits: [{ time: 'Sada', name: 'Nova izjava', reason: 'Pokrenite novu in-memory sesiju bez unosa identifikatora pacijenta.', status: 'Spremno', initials: '+', chipBg: '#E9F2FE', chipFg: '#0058B9', actionable: true, actionLabel: 'Pokreni', action: this.go('consent') }],
+    confirmOpen: !!s.confirm, confirmTitle: s.confirm?.title || '', confirmBody: s.confirm?.body || '', confirmLabel: s.confirm?.label || '', confirmBtnBg: s.confirm?.danger ? '#C0281A' : '#0071E3', confirmNo: () => this.setState({ confirm: null }), confirmYes: () => { const confirm = this.state.confirm; this.setState({ confirm: null }); if (confirm?.action === 'clear') this.resetSession(); if (confirm?.action === 'repeat') this.resetSession(); }, scrollRef: this.scrollRef
+  };
+};
 
 </script>
 </body>

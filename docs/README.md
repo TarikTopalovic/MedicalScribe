@@ -5,9 +5,9 @@ privacy rules:
 
 - `backend/app/mediscribe/`: Python provider core, local `whisper.cpp`
   streaming prototype, and its deterministic local draft generator.
-- `frontend/`: the exact downloaded Design Canvas UI export packaged for the
-  Electron renderer; and `backend/server.js`: the separate Node bridge for one
-  approved OpenRouter transcription request after an utterance finishes.
+- `frontend/`: the downloaded Design Canvas UI layout packaged for Electron;
+  and `backend/server.js`: the loopback API for a finalized cloud or opt-in
+  host-local transcription request and local deterministic draft.
 
 ## Basic browser prototype
 
@@ -36,10 +36,22 @@ batch file) and open the Vite URL. The browser UI does not persist audio,
 transcripts, or drafts. The post-transcription draft is deterministic and
 local; it never diagnoses or proposes therapy.
 
-The Electron renderer is currently the literal downloaded Design Canvas export.
-Its interactions and sample clinical data are visual-demo behavior only and
-are not yet wired to the Node bridge. The current Node bridge separately
-submits an utterance after a user presses “Završi izjavu” in its API client.
+The Electron renderer uses the downloaded design while its active workflow is
+wired to the Node bridge: it checks safe runtime capabilities, requires all
+visible consent confirmations, records one utterance, sends it once after
+“Završi izjavu”, shows only final text as authoritative, and prepares an
+editable deterministic local draft. It does not persist the session, offer a
+signature, or expose a patient identifier field.
+
+For host-side local transcription, do not use Docker. Copy the root
+`.env.example` values into an ignored runtime `.env`, set
+`MEDISCRIBE_LOCAL_TRANSCRIPTION_ENABLED=true`, verify cooling, then start the
+Node backend directly from the repository root with `node backend/server.js`.
+The route requires the checked Whisper binary, final Bosnian model, Python, and
+FFmpeg; it accepts only one decode at a time and preserves the 85°C shutdown
+guard. The Docker bridge keeps this option disabled because it intentionally
+contains neither models nor host CPU access.
+
 For local provisional text while speaking, use the Python streaming prototype
 documented in [../backend/README.md](../backend/README.md). Do not use either
 prototype for clinical decisions without the required validation, consent, and
