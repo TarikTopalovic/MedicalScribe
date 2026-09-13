@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { isHallucinated, derivedConfidence } = require("../routes/transcribe_openrouter");
+const { withoutCaptionArtefacts } = require("../routes/transcribe_local");
 
 test("clear non-speech is dropped", () => {
   assert.equal(isHallucinated({ no_speech_prob: 1, avg_logprob: -1.4 }), true);
@@ -23,4 +24,22 @@ test("confidence comes from the provider's log probabilities", () => {
 test("a provider that reports nothing leaves confidence unknown", () => {
   assert.equal(derivedConfidence([{ text: "x" }]), null);
   assert.equal(derivedConfidence([]), null);
+});
+
+// A silent clip once decoded to "Hvala što pratite kanal." and was saved as a
+// clinical summary. Voice activity detection stops it at the source; this is
+// the second line of defence.
+test("subtitle credits never reach a transcript", () => {
+  const kept = withoutCaptionArtefacts([
+    { text: " Hvala što pratite kanal." },
+    { text: "Pretplatite se!" },
+    { text: "Titlovi by Amara.org" },
+    { text: "Pacijent ima bol u grudima." },
+  ]);
+  assert.deepEqual(kept.map((segment) => segment.text.trim()), ["Pacijent ima bol u grudima."]);
+});
+
+test("ordinary gratitude in a consultation is not mistaken for credits", () => {
+  const kept = withoutCaptionArtefacts([{ text: "Hvala, doktore." }, { text: "Hvala vam puno." }]);
+  assert.equal(kept.length, 2);
 });

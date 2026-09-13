@@ -50,6 +50,9 @@ export class Capture {
     this.origin = performance.now();
     this.stream = await navigator.mediaDevices.getUserMedia(constraints);
     this.context = new (window.AudioContext || window.webkitAudioContext)();
+    // Permission prompts can leave the context suspended even though the
+    // stream is live, which would otherwise make the level meter stay silent.
+    await this.context.resume();
     const source = this.context.createMediaStreamSource(this.stream);
     this.analyser = this.context.createAnalyser();
     this.analyser.fftSize = 1024;

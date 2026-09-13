@@ -20,6 +20,16 @@ export function buildViewModel(app, src) {
     const shown = s.finished ? src.lines.length - 1 : s.idx;
     const err = s.errKey ? ERRORS[s.errKey] : null;
 
+    // The scripted demo has no timestamps, so it keeps the cadence the design
+    // was drawn with. A live segment carries the times the recorder measured.
+    const atOf = (line, i) => mmss(Number.isFinite(line.start) ? Math.round(line.start / 1000) : i * 14);
+    const spanOf = (line, i) => (Number.isFinite(line.start) && Number.isFinite(line.end)
+      ? atOf(line, i) + ' – ' + mmss(Math.round(line.end / 1000))
+      : mmss(i * 14) + ' – ' + mmss(i * 14 + 13));
+    const confidenceOf = (line) => (Number.isFinite(line.conf) ? ' · ' + Math.round(line.conf * 100) + ' %' : '');
+    // A report list shorter than the last selection must not read past its end.
+    const sel = Math.min(Math.max(0, s.sel), Math.max(0, src.reports.length - 1));
+
     const seg = (i) => (s.segOverride[i] !== undefined ? s.segOverride[i] : src.lines[i].t);
     const speakerOf = (i) => (s.speakerFixed[i] ? src.patientLabel : src.lines[i].sp);
 
@@ -38,6 +48,8 @@ export function buildViewModel(app, src) {
 
     const statusMap = src.demo
       ? { label: 'Demonstracija', bg: '#F2F2F4', border: '#E3E3E7', fg: '#6E6E73', dot: '#86868B' }
+      : s.bridgeDown
+      ? { label: 'Servis nedostupan', bg: '#FDF3F1', border: '#F6D9D3', fg: '#8E1F14', dot: '#C0281A' }
       : err
       ? { label: 'Greška', bg: '#FDF3F1', border: '#F6D9D3', fg: '#8E1F14', dot: '#C0281A' }
       : s.phase
@@ -49,17 +61,20 @@ export function buildViewModel(app, src) {
             : { label: 'Lokalno', bg: '#F0F7F1', border: '#D6EBD9', fg: '#1F7A36', dot: '#30B050' };
 
     const meterActive = s.running;
+    const normalizedLevel = Math.min(1, s.micLevel / 0.08);
     const meterBars = [0.4, 0.85, 0.6, 1, 0.5, 0.75].map((h, i) => ({
-      scale: meterActive ? 1 : h * 0.4,
+      scale: meterActive ? Math.max(0.12, normalizedLevel * h) : h * 0.4,
       color: meterActive ? '#0071E3' : '#DEDEE3',
-      anim: meterActive ? 'zbar ' + (620 + i * 90) + 'ms ease-in-out infinite' : 'none'
+      anim: 'none'
     }));
 
     const modeOptions = [
       {
         key: 'local', title: 'Lokalna transkripcija',
         body: 'Koristi lokalni streaming model kad je instaliran. Zvuk ostaje na ovom računaru.',
-        reason: s.thermal === 'potrebno hlađenje' ? 'Uređaj se hladi — lokalna obrada je privremeno usporena.' : ''
+        reason: s.thermal === 'potrebno hlađenje'
+          ? 'Uređaj se hladi — lokalna obrada je privremeno usporena.'
+          : (s.localDraftReason || '')
       },
       {
         key: 'hybrid', title: 'Hibridna obrada',
@@ -89,8 +104,8 @@ export function buildViewModel(app, src) {
       return {
         sp: speakerOf(i), t: seg(i),
         color: l.d ? '#0058B9' : '#8A5A2B',
-        span: mmss(i * 14) + ' – ' + mmss(i * 14 + 13),
-        warn: l.low ? 'Niska pouzdanost · 92 %' : (l.unk && !s.speakerFixed[i] ? 'Govornik nije prepoznat' : ''),
+        span: spanOf(l, i),
+        warn: l.low ? 'Niska pouzdanost' + confidenceOf(l) : (l.unk && !s.speakerFixed[i] ? 'Govornik nije prepoznat' : ''),
         unknown: !!l.unk && !s.speakerFixed[i],
         edited: s.segOverride[i] !== undefined,
         editing, reading: !editing,
@@ -138,10 +153,13 @@ export function buildViewModel(app, src) {
 
     const reports = src.reports.map((r, i) => {
       const c = CHIP[r.status];
-      return Object.assign({}, r, { chipBg: c[0], chipFg: c[1], bg: i === s.sel ? '#F5F8FD' : '#fff', select: () => app.setState({ sel: i }) });
+      return Object.assign({}, r, { chipBg: c[0], chipFg: c[1], bg: i === sel ? '#F5F8FD' : '#fff', select: () => app.setState({ sel: i }) });
     });
 
     const HIST = src.history;
+
+    // What is waiting for review is counted, never asserted.
+    const draftCount = src.reports.filter(r => r.status === 'Nacrt').length;
 
     const lowConf = src.lines.slice(0, shown + 1).some((l, i) => l.low || (l.unk && !s.speakerFixed[i]));
 
@@ -165,22 +183,29 @@ export function buildViewModel(app, src) {
       }] : []),
 
       statusLabel: statusMap.label, statusBg: statusMap.bg, statusBorder: statusMap.border, statusFg: statusMap.fg, statusDot: statusMap.dot,
-      hasDrafts: true,
-      draftsTitle: (s.approved ? 2 : 3) + ' nacrta čeka provjeru',
+      hasDrafts: draftCount > 0,
+      draftsTitle: draftCount === 0
+        ? 'Nijedan nacrt ne čeka provjeru'
+        : draftCount + (draftCount === 1 ? ' nacrt čeka provjeru' : ' nacrta čeka provjeru'),
       modeShort: cloud ? 'Vanjska · ' + s.cloudProfile : (hybrid ? 'Hibridno · nalaz vanjski' : 'Lokalno na uređaju'),
       railNote: src.demo
         ? 'Demonstracija bez mikrofona: pokrenite lokalni servis ili unesite OpenRouter ključ za stvarnu sesiju.'
+        : s.bridgeDown
+        ? 'Servis na ovom računaru nije dostupan. Pokrenite ga da biste snimali i vidjeli sačuvane nalaze.'
         : cloud
         ? 'Vanjska obrada: ' + s.cloudProfile + '. Šalju se samo završene izjave.'
         : hybrid
           ? 'Hibridna obrada: zvuk ostaje na uređaju, a konačni tekst ide vanjskom modelu za nalaz.'
           : 'Lokalna obrada: zvuk ostaje na ovom računaru i ne pohranjuje se.',
 
-      errorActive: !!err, errorTitle: err ? err.title : '', errorText: err ? err.text : '',
+      errorActive: !!err, errorTitle: err ? err.title : '',
+      // The bridge's own Bosnian reason, when it gave one. Provider bodies and
+      // transcript text never reach this string.
+      errorText: err ? (s.errDetail && s.errDetail !== err.text ? err.text + ' (' + s.errDetail + ')' : err.text) : '',
       errorOffersLocal: !!(err && err.local && external),
       switchToLocal: () => app.setState({ mode: 'local', errKey: null }),
-      retryError: () => app.setState({ errKey: null }),
-      dismissError: () => app.setState({ errKey: null }),
+      retryError: () => app.setState({ errKey: null, errDetail: '' }),
+      dismissError: () => app.setState({ errKey: null, errDetail: '' }),
 
       openSettings: () => app.setState({ settingsOpen: true, privacyOpen: false, accountMenuOpen: false }),
       openPrivacy: () => app.setState({ privacyOpen: true, settingsOpen: false, accountMenuOpen: false }),
@@ -274,12 +299,15 @@ export function buildViewModel(app, src) {
             (cloud ? 'Mikrofon se aktivira nakon pokretanja. Prima: ' + s.cloudProfile + '.' :
               (hybrid ? 'Mikrofon se aktivira nakon pokretanja. Zvuk ostaje na uređaju; vanjski model dobiva samo tekst.' : 'Mikrofon se aktivira nakon pokretanja. Obrada ostaje na uređaju.')))),
 
-      clock: mmss(Math.max(0, (shown + 1) * 14)),
+      clock: shown >= 0 ? atOf({ start: src.lines[shown]?.end }, shown + 1) : mmss(0),
       recLabel: s.running ? 'Snima se' : (s.phase ? PHASES[s.phase] : (s.finished ? 'Izjava završena' : 'Spremno')),
       recDot: s.running ? '#E0301A' : (s.phase ? '#C77700' : '#C7C7CC'),
       recAnim: s.running ? 'zpulse 1.2s infinite' : 'none',
       phaseLabel: s.phase ? PHASES[s.phase] : '',
-      meterBars, meterText: s.running ? 'Nivo zvuka: dobar' : 'Nivo zvuka: nema signala',
+      meterBars,
+      meterText: s.running
+        ? (normalizedLevel < 0.08 ? 'Mikrofon aktivan · čekam zvuk' : (normalizedLevel > 0.9 ? 'Nivo zvuka: visok' : 'Nivo zvuka: dobar'))
+        : 'Nivo zvuka: nema signala',
       finishUtterance: app.finish,
       finishBlocked: !s.running,
       finishBtnBg: s.running ? '#1D1D1F' : '#C7C7CC',
@@ -295,7 +323,7 @@ export function buildViewModel(app, src) {
           ? 'Hibridna obrada: zvuk se prepisuje na uređaju i ne pohranjuje se. Van uređaja ide samo konačni tekst.'
           : 'Lokalna obrada: zvuk ostaje u baferu od 3 s i ne pohranjuje se. Mikrofon: ' + s.mic + '.',
       lines: src.lines.slice(0, shown + 1).map((l, i) => ({
-        sp: speakerOf(i), t: seg(i), color: l.d ? '#0058B9' : '#8A5A2B', at: mmss(i * 14),
+        sp: speakerOf(i), t: seg(i), color: l.d ? '#0058B9' : '#8A5A2B', at: atOf(l, i),
         warn: l.low ? 'Niska pouzdanost' : (l.unk && !s.speakerFixed[i] ? 'Govornik nije prepoznat' : '')
       })),
       lineCount: (shown + 1) + ' od ' + src.lines.length + ' segmenata',
@@ -323,7 +351,9 @@ export function buildViewModel(app, src) {
       noteChip: s.approved ? 'Potpisano · v2' : (noteReady ? 'Nacrt · nije zapis' : 'Čeka konačni transkript'),
       noteChipBg: s.approved ? '#F0F7F1' : '#FCF3E3',
       noteChipFg: s.approved ? '#1F7A36' : '#9A5B00',
-      noteMeta: noteReady ? 'Pripremljeno lokalno iz konačnog transkripta · 15 segmenata' : 'Nacrt nastaje nakon konačnog transkripta',
+      noteMeta: noteReady
+        ? (external ? 'Pripremljeno iz konačnog transkripta · ' : 'Pripremljeno lokalno iz konačnog transkripta · ') + src.lines.length + ' segmenata'
+        : 'Nacrt nastaje nakon konačnog transkripta',
       regenerate: () => app.regenerate(src),
       copyDraft: () => app.copyDraft(note),
       copyLabel: s.copied ? 'Kopirano' : 'Kopiraj nacrt',
@@ -334,7 +364,7 @@ export function buildViewModel(app, src) {
       approveHint: !noteReady
         ? 'Nalaz se može odobriti samo iz konačnog transkripta. Završite izjavu.'
         : (s.noteStale ? 'Transkript je izmijenjen — pripremite nacrt ponovo prije potpisa.' : 'Nacrt je vidljiv samo vama. Potpisom ulazi u karton pacijenta.'),
-      approvedMeta: active.name + ' · 12.09.2026. u 10:41.',
+      approvedMeta: active.name + ' · ' + new Date(s.approvedAt || Date.now()).toLocaleString('bs-BA'),
       processingRows: [
         { k: 'Snimak', v: 'Nije pohranjen' },
         { k: 'Transkript', v: 'Memorija sesije' },
@@ -343,8 +373,9 @@ export function buildViewModel(app, src) {
         { k: 'Toplinska zaštita', v: s.thermal }
       ],
 
-      reports, history: HIST[s.sel], selName: reports[s.sel].name + ' · ' + reports[s.sel].date,
-      draftCount: s.approved ? 2 : 3, visits,
+      reports, history: HIST[sel] || [],
+      selName: reports[sel] ? reports[sel].name + ' · ' + reports[sel].date : 'Nema odabranog nalaza',
+      draftCount, visits,
 
       confirmOpen: !!s.confirm,
       confirmTitle: s.confirm ? s.confirm.title : '',
@@ -358,7 +389,7 @@ export function buildViewModel(app, src) {
         if (!c) return;
         if (c.action === 'clear') app.clearSession();
         if (c.action === 'logout') { app.clearTimers(); app.clearSession(); app.setState({ screen: 'signin' }); }
-        if (c.action === 'approve') app.setState({ approved: true });
+        if (c.action === 'approve') app.setState({ approved: true, approvedAt: Date.now() });
         if (c.action === 'repeat') {
           app.clearTimers();
           app.setState({ screen: 'visit', idx: -1, running: false, finished: false, phase: null, provisional: '', note: null, noteStale: false, segOverride: {}, segEdit: null });

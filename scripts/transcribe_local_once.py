@@ -23,6 +23,7 @@ def main() -> int:
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--threads", type=int, default=os.cpu_count() or 1)
+    parser.add_argument("--vad-model", type=Path, default=None)
     parser.add_argument("--max-cpu-temperature", type=float, default=85.0)
     args = parser.parse_args()
 
@@ -39,6 +40,7 @@ def main() -> int:
             WhisperCppConfig(
                 binary_path=args.binary,
                 model_path=args.model,
+                vad_model_path=args.vad_model,
                 threads=args.threads,
                 beam_size=5,
                 max_cpu_temperature_celsius=args.max_cpu_temperature,

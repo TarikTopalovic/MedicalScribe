@@ -7,6 +7,8 @@
 // renderer and is sent back only when a draft is asked for.
 
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 const express = require("express");
 const multer = require("multer");
 
@@ -28,6 +30,23 @@ const upload = multer({
 
 const sessions = new Map();
 
+// Diagnostics only, and off unless MEDISCRIBE_DEBUG_AUDIO_DIR is set: the
+// clinician's own test recording is kept so the capture chain can be measured
+// instead of guessed at. Delete the directory and unset the variable when the
+// microphone question is settled — a clinical build must never store audio.
+function keepForDiagnostics(buffer, mimetype, mode) {
+  const directory = process.env.MEDISCRIBE_DEBUG_AUDIO_DIR;
+  if (!directory) return;
+  try {
+    fs.mkdirSync(directory, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const extension = String(mimetype || "").includes("ogg") ? "ogg" : "webm";
+    fs.writeFileSync(path.join(directory, `${stamp}-${mode}.${extension}`), buffer, { mode: 0o600 });
+  } catch {
+    // Diagnostics must never interrupt a consultation.
+  }
+}
+
 function sweep() {
   const cutoff = Date.now() - SESSION_TTL_MS;
   sessions.forEach((session, id) => { if (session.touchedAt < cutoff) sessions.delete(id); });
@@ -37,6 +56,7 @@ function load(req, res) {
   sweep();
   const session = sessions.get(req.params.id);
   if (!session) {
+    console.warn("[sesija]", req.method, req.params.id, "404 sesija ne postoji");
     res.status(404).json({ greska: "Sesija ne postoji ili je obrisana." });
     return null;
   }
@@ -54,18 +74,28 @@ router.post("/", (req, res) => {
   }
   sweep();
   const id = crypto.randomUUID();
-  const session = { id, mode, approved, utterances: 0, lastEndMs: 0, recordId: null, createdAt: Date.now(), touchedAt: Date.now() };
+  const session = { id, mode, approved, utterances: 0, lastEndMs: 0, recordId: null, recordReady: null, createdAt: Date.now(), touchedAt: Date.now() };
   sessions.set(id, session);
   // Persistence is best-effort: a consultation never fails on the database.
+  // Later writes wait for this promise, so they cannot race the session insert.
   if (store.configured) {
-    store.openSession().then((recordId) => { session.recordId = recordId; }).catch(() => {});
+    session.recordReady = store.openSession()
+      .then((recordId) => { session.recordId = recordId; return recordId; })
+      .catch(() => null);
   }
   return res.status(201).json({ id, mode, persisted: store.configured });
 });
 
-router.delete("/:id", (req, res) => {
-  sessions.delete(req.params.id);
-  return res.json({ obrisano: true });
+router.delete("/:id", async (req, res) => {
+  const session = sessions.get(req.params.id);
+  try {
+    const recordId = await session?.recordReady;
+    if (recordId) await store.deleteSession(recordId);
+    sessions.delete(req.params.id);
+    return res.json({ obrisano: true });
+  } catch {
+    return res.status(502).json({ greska: "Sesija nije obrisana iz sigurne pohrane." });
+  }
 });
 
 // One completed utterance. Partial audio is never accepted: the renderer cuts
@@ -76,13 +106,17 @@ router.post("/:id/audio", upload.single("audio"), async (req, res) => {
   if (!req.file?.buffer?.length) {
     return res.status(400).json({ greska: "Audio fajl nije poslan ili format nije podržan." });
   }
+  keepForDiagnostics(req.file.buffer, req.file.mimetype, session.mode);
   try {
     // Hybrid keeps the audio on the device: only the cloud mode uploads it.
     const result = session.mode === "cloud"
       ? await transcribeRemote(req.file.buffer, req.file.mimetype, { approved: session.approved, profile: req.body.profile })
       : await transcribeLocal(req.file.buffer);
     const text = String(result.text || "").trim();
-    if (!text) return res.status(502).json({ greska: "Izjava nije prepoznata. Ponovite je." });
+    // Voice activity detection found no speech in the clip, or every segment
+    // was rejected as invented. Nothing is recorded and nothing failed, so the
+    // renderer must not raise a processing error for a moment of quiet.
+    if (!text) return res.json({ final: true, segments: [], noSpeech: true });
     const offset = session.utterances;
     session.utterances += 1;
     // The recorder measured the clip; if it did not say, fall back to what the
@@ -100,11 +134,13 @@ router.post("/:id/audio", upload.single("audio"), async (req, res) => {
       startMs,
       endMs: session.lastEndMs,
     };
-    if (session.recordId) {
-      store.addSegment(session.recordId, { ...segment, speaker: "unknown" }).catch(() => {});
+    const recordId = await session.recordReady;
+    if (recordId) {
+      store.addSegment(recordId, { ...segment, speaker: "unknown" }).catch(() => {});
     }
     return res.json({ final: true, segments: [segment] });
   } catch (error) {
+    console.warn("[zvuk]", error.status || 502, error.message, error.detail || "");
     return res.status(error.status || 502).json({ greska: error.message || "Transkripcija nije uspjela." });
   }
 });
@@ -121,11 +157,13 @@ router.post("/:id/draft", async (req, res) => {
   try {
     const draft = await draftNote(clean, session.mode);
     let revision = 0;
-    if (session.recordId) {
-      revision = await store.saveDraft(session.recordId, draft).catch(() => 0);
+    const recordId = await session.recordReady;
+    if (recordId) {
+      revision = await store.saveDraft(recordId, draft).catch(() => 0);
     }
     return res.json({ ...draft, revision, persisted: revision > 0 });
   } catch (error) {
+    console.warn("[nacrt]", error.status || 502, error.message);
     return res.status(error.status || 502).json({ greska: error.message || "Nacrt nije pripremljen." });
   }
 });

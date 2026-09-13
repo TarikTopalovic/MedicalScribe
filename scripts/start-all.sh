@@ -18,6 +18,12 @@ zaustavi_sve() {
 }
 trap zaustavi_sve INT TERM
 
+# Lokalni model za nalaz (Ollama) radi samo ako je servis pokrenut.
+if command -v ollama >/dev/null 2>&1 && ! curl -sf -m 2 http://127.0.0.1:11434/api/tags >/dev/null; then
+  echo "Pokrećem Ollamu (lokalni model za nalaz)..."
+  ollama serve >/dev/null 2>&1 &
+fi
+
 echo "Pokrećem backend (port 3001)..."
 (cd "$REPO_ROOT/backend" && npm run start) &
 BACKEND_PID=$!

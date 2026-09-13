@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { draftNote, deterministicDraft, LABELS } = require("../lib/note");
+const { draftNote, deterministicDraft, localDraftCapability, LABELS } = require("../lib/note");
 
 const SEGMENTS = [
   { speaker: "dr. Begić", role: "doctor", text: "Recite mi šta vas dovodi danas." },
@@ -38,4 +38,19 @@ test("external drafting is refused when no key is configured", async () => {
   delete process.env.OPENROUTER_API_KEY;
   await assert.rejects(() => draftNote(SEGMENTS, "cloud"), (error) => error.status === 503);
   if (key) process.env.OPENROUTER_API_KEY = key;
+});
+
+// The clinician has to learn this before recording, not after the consultation.
+test("a machine without a local model says so instead of claiming one", async () => {
+  const url = process.env.MEDISCRIBE_OLLAMA_URL;
+  process.env.MEDISCRIBE_OLLAMA_URL = "http://127.0.0.1:1";
+  try {
+    const capability = await localDraftCapability();
+    assert.equal(capability.available, false);
+    assert.equal(capability.model, "");
+    assert.ok(capability.reason, "the reason must be shown to the clinician");
+  } finally {
+    if (url === undefined) delete process.env.MEDISCRIBE_OLLAMA_URL;
+    else process.env.MEDISCRIBE_OLLAMA_URL = url;
+  }
 });

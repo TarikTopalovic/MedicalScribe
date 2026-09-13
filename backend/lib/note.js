@@ -13,7 +13,7 @@
 // a diagnosis, an examination finding, or a medication that was not spoken.
 
 const LABELS = ["Subjektivno", "Objektivno", "Procjena", "Plan"];
-const OLLAMA = process.env.MEDISCRIBE_OLLAMA_URL || "http://127.0.0.1:11434";
+const ollamaUrl = () => process.env.MEDISCRIBE_OLLAMA_URL || "http://127.0.0.1:11434";
 const DRAFT_MODEL = process.env.MEDISCRIBE_OPENROUTER_DRAFT_MODEL || "anthropic/claude-sonnet-5";
 
 const SYSTEM = `Ti si pomoćnik za medicinsku dokumentaciju. Organiziraš transkript razgovora ljekara i pacijenta u nacrt SOAP nalaza na bosanskom jeziku.
@@ -123,18 +123,41 @@ async function openRouterDraft(segments) {
   return normalize(parseJson(body.choices?.[0]?.message?.content), segments);
 }
 
+// The installed model is checked, not assumed: a name in the environment that
+// Ollama does not have would otherwise fail silently on the first draft, after
+// the consultation is already over.
 async function ollamaModel() {
-  if (process.env.MEDISCRIBE_OLLAMA_MODEL) return process.env.MEDISCRIBE_OLLAMA_MODEL;
-  const response = await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(1500) });
+  const wanted = process.env.MEDISCRIBE_OLLAMA_MODEL;
+  const response = await fetch(`${ollamaUrl()}/api/tags`, { signal: AbortSignal.timeout(1500) });
   if (!response.ok) return null;
   const body = await response.json();
-  return body.models?.[0]?.name || null;
+  const installed = (body.models || []).map((model) => model.name);
+  if (wanted) return installed.includes(wanted) ? wanted : null;
+  return installed[0] || null;
+}
+
+// Whether this machine can write the note itself. Reported by /api/config so
+// the clinician learns it before recording, not after.
+async function localDraftCapability() {
+  try {
+    const model = await ollamaModel();
+    if (model) return { available: true, model, reason: "" };
+    return {
+      available: false,
+      model: "",
+      reason: process.env.MEDISCRIBE_OLLAMA_MODEL
+        ? "Postavljeni lokalni model nije instaliran u Ollami."
+        : "Nijedan lokalni model nije instaliran.",
+    };
+  } catch {
+    return { available: false, model: "", reason: "Lokalni model (Ollama) nije pokrenut na ovom računaru." };
+  }
 }
 
 async function ollamaDraft(segments) {
   const model = await ollamaModel();
   if (!model) return null;
-  const response = await fetch(`${OLLAMA}/api/chat`, {
+  const response = await fetch(`${ollamaUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -183,4 +206,4 @@ function draftCapabilities() {
   };
 }
 
-module.exports = { draftNote, draftCapabilities, deterministicDraft, LABELS };
+module.exports = { draftNote, draftCapabilities, localDraftCapability, deterministicDraft, LABELS };

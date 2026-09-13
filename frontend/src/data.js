@@ -90,7 +90,11 @@ export const ERRORS = {
   eu: { title: 'Klinička ruta u EU nije dostupna', text: 'Konfiguracija za obradu kliničkih podataka u EU trenutno nije aktivna, pa je vanjska obrada blokirana. Lokalna obrada je dostupna.', local: true },
   thermal: { title: 'Lokalna transkripcija zaustavljena', text: 'Obrada je prekinuta da se uređaj ohladi. Ponovni pokušaj nije automatski — pokrenite ga sami kad temperatura padne.' },
   network: { title: 'Veza s obrađivačem prekinuta', text: 'Zahtjev nije uspio. Zvuk nije automatski ponovno poslan, a ručno upisani tekst je sačuvan u memoriji sesije.' },
-  mic: { title: 'Mikrofon ili format nisu podržani', text: 'Potreban je mono zapis 16 kHz. Odaberite drugi ulazni uređaj u postavkama ili promijenite pretraživač.' }
+  mic: { title: 'Mikrofon ili format nisu podržani', text: 'Potreban je mono zapis 16 kHz. Odaberite drugi ulazni uređaj u postavkama ili promijenite pretraživač.' },
+  // Added for the live session: a quiet room and a busy queue are ordinary
+  // situations, and naming them stops the app from blaming the connection.
+  silence: { title: 'Govor nije prepoznat', text: 'U ovoj izjavi nije zabilježen govor, pa ništa nije zapisano. Provjerite odabrani mikrofon u postavkama i ponovite izjavu.' },
+  busy: { title: 'Obrada još traje', text: 'Više izjava čeka lokalnu obradu. Sačekajte da se trenutne završe prije nove izjave — ništa nije izgubljeno.' }
 };
 
 export const GOVERNANCE = [

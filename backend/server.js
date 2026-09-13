@@ -14,7 +14,7 @@ const transcribeRouter = require("./routes/transcribe_openrouter");
 const localTranscribeRouter = require("./routes/transcribe_local");
 const structureRouter = require("./routes/structure_local");
 const sessionsRouter = require("./routes/sessions");
-const { draftCapabilities } = require("./lib/note");
+const { draftCapabilities, localDraftCapability } = require("./lib/note");
 const store = require("./lib/store");
 
 const app = express();
@@ -65,10 +65,11 @@ app.get("/api/reports", async (req, res) => {
 
 // Safe capability report for the desktop renderer. It deliberately contains no
 // token, model-provider response, device path, or patient/session data.
-app.get("/api/config", (req, res) => {
+app.get("/api/config", async (req, res) => {
   const cloud = transcribeRouter.capabilities();
   const local = localTranscribeRouter.capabilities();
   const draft = draftCapabilities();
+  const localDraft = await localDraftCapability();
   res.json({
     version: 2,
     language: "bs",
@@ -86,6 +87,13 @@ app.get("/api/config", (req, res) => {
     draft: {
       external: draft.external,
       reason: draft.external ? "" : "Nacrt se priprema lokalno.",
+      // Local drafting writes the note on this machine through Ollama. Without
+      // it the local mode still works, but the note is only the spoken record.
+      local: {
+        available: localDraft.available,
+        model: localDraft.model,
+        reason: localDraft.reason,
+      },
     },
     // Transcript and draft revisions are kept; audio never is.
     storage: {

@@ -50,6 +50,9 @@ ATTR_MAP = {
 }
 # Dropped: Design Canvas editor hints, and attributes React controls instead.
 DROP_ATTRS = {"hint-placeholder-val", "hint-placeholder-count", "data-dc-script"}
+# Design Canvas wraps its own host chrome in <helmet>. React renders that as an
+# unknown element and warns on every render, so it stays out of the interface.
+HOST_TAGS = {"helmet"}
 # Elements whose text content must become a `value` prop instead of children.
 VALUE_ELEMENTS = {"textarea"}
 
@@ -79,8 +82,13 @@ class Parser(HTMLParser):
         self.capturing = None
 
     def handle_starttag(self, tag, attrs):
+        if tag in HOST_TAGS:
+            self.skip_depth += 1
+            return
         if tag in ("script", "style"):
             self.capturing = tag
+            return
+        if self.skip_depth:
             return
         if tag in VOID:
             self.stack[-1].children.append(Node(tag, attrs))
@@ -90,13 +98,18 @@ class Parser(HTMLParser):
         self.stack.append(node)
 
     def handle_startendtag(self, tag, attrs):
-        if tag in ("script", "style"):
+        if tag in ("script", "style") or self.skip_depth:
             return
         self.stack[-1].children.append(Node(tag, attrs))
 
     def handle_endtag(self, tag):
+        if tag in HOST_TAGS:
+            self.skip_depth = max(0, self.skip_depth - 1)
+            return
         if tag in ("script", "style"):
             self.capturing = None
+            return
+        if self.skip_depth:
             return
         if tag in VOID:
             return
@@ -108,6 +121,8 @@ class Parser(HTMLParser):
     def handle_data(self, data):
         if self.capturing:
             self.captured[self.capturing].append(data)
+            return
+        if self.skip_depth:
             return
         if data:
             self.stack[-1].children.append(Node("#text", text=data))

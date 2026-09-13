@@ -2,6 +2,8 @@
 const express = require("express");
 const multer = require("multer");
 
+const { toWavBuffer } = require("../lib/audio");
+
 const router = express.Router();
 const PROFILE_MODELS = {
   mai: "microsoft/mai-transcribe-2",
@@ -26,6 +28,11 @@ const upload = multer({
 function enabled(value) {
   return String(value || "").toLowerCase() === "true";
 }
+
+// Subtitle credits a speech model falls back on when it cannot place a sound.
+// The local route filters the same lines; a provider that returns only text
+// gives us no probabilities to judge, so the phrases are all we have.
+const CAPTION_ARTEFACTS = /^(hvala (što pratite kanal|na (gledanju|pažnji))|pretplatite se[.!]?|titlovi?( by)?.*|subtitles? by.*|amara\.org.*)$/i;
 
 // Whisper invents plausible speech for non-speech audio — a sine tone came
 // back as "Hvala vam." Its own published heuristic is that a segment is not
@@ -94,6 +101,17 @@ async function transcribeRemote(buffer, mimetype, { approved, profile }) {
     error.status = settings.status;
     throw error;
   }
+  // Every provider is sent the same decoded 16 kHz mono WAV. MAI Transcribe 2
+  // rejects the browser's WebM container outright, which is what made the whole
+  // cloud mode fail; the audio still leaves only after explicit approval.
+  let audio;
+  try {
+    audio = await toWavBuffer(buffer);
+  } catch {
+    const error = new Error("Zvuk izjave nije mogao biti pripremljen za slanje.");
+    error.status = 502;
+    throw error;
+  }
   try {
     const odgovor = await fetch(`${settings.apiBase}/audio/transcriptions`, {
       method: "POST",
@@ -106,8 +124,8 @@ async function transcribeRemote(buffer, mimetype, { approved, profile }) {
       body: JSON.stringify({
         model: settings.model,
         input_audio: {
-          data: buffer.toString("base64"),
-          format: AUDIO_FORMATS[mimetype] || "webm",
+          data: audio.toString("base64"),
+          format: "wav",
         },
         language: "bs",
         temperature: 0,
@@ -122,23 +140,27 @@ async function transcribeRemote(buffer, mimetype, { approved, profile }) {
       error.status = odgovor.status === 402 ? 402 : 502;
       throw error;
     }
+    // The provider's language label is unreliable for Bosnian and is not a
+    // reason to throw away a correct transcript: MAI Transcribe 2 returned
+    // perfect Bosnian labelled "cs", and whisper moves between bs, hr and sr.
+    // It is reported for the record; non-speech is caught by the filters below.
     const language = String(rezultat.language || "").trim().toLowerCase();
-    if (language && !["bs", "bs-ba", "bos", "bosnian"].includes(language)) {
-      const error = new Error("Servis nije vratio bosanski transkript.");
-      error.status = 502;
-      throw error;
-    }
     const all = Array.isArray(rezultat.segments) ? rezultat.segments : [];
-    const kept = all.filter((segment) => !isHallucinated(segment));
+    const kept = all
+      .filter((segment) => !isHallucinated(segment))
+      .filter((segment) => !CAPTION_ARTEFACTS.test(String(segment.text || "").trim().replace(/[.!?]+$/, "")));
     // Rebuild the text from what survived, so a dropped segment cannot reach
     // the transcript through the provider's own joined string.
     const text = (kept.length ? kept.map((segment) => String(segment.text || "")).join(" ") : String(rezultat.text || ""))
       .replace(/\s+/g, " ")
       .trim();
-    if (!text || (all.length && !kept.length)) {
+    if (!all.length && CAPTION_ARTEFACTS.test(text.replace(/[.!?]+$/, ""))) {
       return { text: "", language: "bs", segments: [], confidence: null };
     }
-    return { text, language: "bs", segments: kept, confidence: derivedConfidence(kept) };
+    if (!text || (all.length && !kept.length)) {
+      return { text: "", language: "bs", segments: [], confidence: null, providerLanguage: language };
+    }
+    return { text, language: "bs", segments: kept, confidence: derivedConfidence(kept), providerLanguage: language };
   } catch (error) {
     // Do not serialize or log provider response bodies, audio, or transcript.
     if (error.status) throw error;

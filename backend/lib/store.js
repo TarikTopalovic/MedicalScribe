@@ -128,6 +128,14 @@ async function saveDraft(recordId, draft) {
   return revision;
 }
 
+// Child transcript and draft rows cascade from the session in the database.
+async function deleteSession(recordId) {
+  await rest(`/clinical_sessions?id=eq.${encodeURIComponent(recordId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+}
+
 // The reports screen: finalized sessions with their current draft.
 async function listReports(limit = 20) {
   const owner = await resolveOwner();
@@ -147,4 +155,4 @@ async function listReports(limit = 20) {
   });
 }
 
-module.exports = { configured, openSession, addSegment, saveDraft, listReports };
+module.exports = { configured, openSession, addSegment, saveDraft, deleteSession, listReports };

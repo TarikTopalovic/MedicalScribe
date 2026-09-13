@@ -322,9 +322,6 @@ export default function Screen(vm) {
   } = vm;
   return (
     <>
-      <helmet>
-        <link rel="stylesheet" href="_ds/modernist-ad348bf4-19ff-4820-9ecf-debae851ca7c/styles.css" />
-      </helmet>
       <div style={{ "minHeight": "100vh", "background": "#F2F2F5", "fontFamily": "-apple-system,BlinkMacSystemFont,'SF Pro Text','Archivo',sans-serif", "color": "#1D1D1F", "WebkitFontSmoothing": "antialiased" }}>
         <div style={{ "position": "sticky", "top": "0", "zIndex": "30", "background": "rgba(255,255,255,.92)", "backdropFilter": "blur(12px)", "borderBottom": "1px solid #E3E3E7" }}>
           <div style={{ "maxWidth": "960px", "margin": "0 auto", "padding": "10px 16px", "display": "flex", "alignItems": "center", "gap": "10px", "flexWrap": "wrap" }}>
@@ -462,7 +459,7 @@ export default function Screen(vm) {
           {(isApp) ? (
             <>
             <div style={{ "flex": "1 1 210px", "minWidth": "190px", "maxWidth": "240px", "alignSelf": "stretch", "background": "#fff", "border": "1px solid #E3E3E7", "borderRadius": "16px", "padding": "16px 14px", "display": "flex", "flexDirection": "column", "gap": "16px", "minHeight": "360px" }}>
-              <div style={{ "display": "flex", "alignItems": "center", "gap": "10px" }}>
+              <button onClick={goToday} style={{ "display": "flex", "alignItems": "center", "gap": "10px", "width": "100%", "padding": "0", "textAlign": "left", "color": "#1D1D1F" }}>
                 <div style={{ "width": "32px", "height": "32px", "flex": "none", "borderRadius": "10px", "background": "#fff", "border": "1px solid #E3E3E7", "display": "flex", "alignItems": "center", "justifyContent": "center" }}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#D62B20" strokeWidth="4.4" strokeLinecap="round">
                     <path d="M12 4.5v15M4.5 12h15" />
@@ -471,7 +468,7 @@ export default function Screen(vm) {
                 <div style={{ "fontSize": "15px", "fontWeight": "700", "letterSpacing": "-0.02em" }}>
                   {"MediScribe"}
                 </div>
-              </div>
+              </button>
               <div style={{ "height": "1px", "background": "#ECECEF" }} />
               <div style={{ "fontSize": "12px", "color": "#86868B", "lineHeight": "1.5" }}>
                 {railNote}

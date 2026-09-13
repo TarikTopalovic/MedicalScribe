@@ -24,6 +24,9 @@ _DECODE_GATE = threading.BoundedSemaphore(value=1)
 class WhisperCppConfig:
     binary_path: Path
     model_path: Path
+    # Silero VAD. Without it whisper invents speech for silence: an 8 s silent
+    # clip decoded to "Hvala sto pratite kanal." and reached a saved report.
+    vad_model_path: Path | None = None
     language: str = "bs"
     # Use the available logical CPUs for the one permitted local decode.
     threads: int = os.cpu_count() or 1
@@ -86,6 +89,13 @@ class WhisperCppTranscriptionProvider:
                         "-of",
                         str(output_path),
                     ]
+                    if self.config.vad_model_path:
+                        command += [
+                            "--vad",
+                            "-vm",
+                            str(self.config.vad_model_path),
+                            "--suppress-nst",
+                        ]
                     process = subprocess.Popen(
                         command,
                         stdout=subprocess.PIPE,
@@ -153,11 +163,16 @@ class WhisperCppTranscriptionProvider:
         return output.getvalue()
 
     def _segments(self, chunk: AudioChunk, payload: dict[str, Any]) -> list[TranscriptSegment]:
+        spoken = payload.get("transcription") or []
+        # VAD removed every non-speech region, so the clip carried no speech.
+        # That is a silent utterance, not a failure, and it reports no language.
+        if not spoken:
+            return []
         if payload.get("result", {}).get("language") != self.config.language:
             raise self._error("whisper.cpp returned an unexpected language")
 
         segments: list[TranscriptSegment] = []
-        for index, item in enumerate(payload["transcription"]):
+        for index, item in enumerate(spoken):
             text = item["text"].strip()
             if not text:
                 continue
