@@ -43,8 +43,13 @@ export class Capture {
       audio: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
         channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
+        // Off on purpose. These three are built for phone calls: the noise
+        // suppressor and the gain control chew on exactly the quiet, brief,
+        // high-frequency sounds a recogniser needs (s, š, č, t, k), and there
+        // is no far end here for the echo canceller to cancel.
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
       },
     };
     this.origin = performance.now();
