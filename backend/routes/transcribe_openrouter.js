@@ -27,6 +27,23 @@ function enabled(value) {
   return String(value || "").toLowerCase() === "true";
 }
 
+// Whisper invents plausible speech for non-speech audio — a sine tone came
+// back as "Hvala vam." Its own published heuristic is that a segment is not
+// speech when no_speech_prob is high and the average log probability is low;
+// in a clinical transcript a dropped segment is far safer than an invented one.
+function isHallucinated(segment) {
+  return Number(segment.no_speech_prob) > 0.6 && Number(segment.avg_logprob) < -1;
+}
+
+// A provider that reports per-segment log probabilities gives us a real
+// confidence. One that does not leaves it null rather than guessing.
+function derivedConfidence(segments) {
+  const scored = segments.filter((segment) => Number.isFinite(Number(segment.avg_logprob)));
+  if (!scored.length) return null;
+  const mean = scored.reduce((total, segment) => total + Number(segment.avg_logprob), 0) / scored.length;
+  return Math.min(1, Math.max(0, Number(Math.exp(mean).toFixed(3))));
+}
+
 function remoteCapability() {
   if (!enabled(process.env.MEDISCRIBE_ALLOW_REMOTE_PROCESSING)) {
     return { error: "Vanjska obrada nije omogućena na serveru.", status: 403, available: false };
@@ -111,13 +128,17 @@ async function transcribeRemote(buffer, mimetype, { approved, profile }) {
       error.status = 502;
       throw error;
     }
-    const text = String(rezultat.text || "").trim();
-    if (!text) {
-      const error = new Error("Servis nije vratio tekst transkripta.");
-      error.status = 502;
-      throw error;
+    const all = Array.isArray(rezultat.segments) ? rezultat.segments : [];
+    const kept = all.filter((segment) => !isHallucinated(segment));
+    // Rebuild the text from what survived, so a dropped segment cannot reach
+    // the transcript through the provider's own joined string.
+    const text = (kept.length ? kept.map((segment) => String(segment.text || "")).join(" ") : String(rezultat.text || ""))
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text || (all.length && !kept.length)) {
+      return { text: "", language: "bs", segments: [], confidence: null };
     }
-    return { text, language: "bs", segments: rezultat.segments || [] };
+    return { text, language: "bs", segments: kept, confidence: derivedConfidence(kept) };
   } catch (error) {
     // Do not serialize or log provider response bodies, audio, or transcript.
     if (error.status) throw error;
@@ -145,3 +166,5 @@ router.post("/", upload.single("audio"), async (req, res) => {
 module.exports = router;
 module.exports.capabilities = remoteCapability;
 module.exports.transcribeRemote = transcribeRemote;
+module.exports.isHallucinated = isHallucinated;
+module.exports.derivedConfidence = derivedConfidence;

@@ -72,7 +72,7 @@ server keeps only the mode, the approval and an utterance count in memory.
 | `DELETE /api/sessions/:id` | clear the session |
 
 Run the API tests with `cd backend && npm test`, and the Python provider tests
-with `python -m pytest tests`.
+with `uv run --with pytest pytest tests` from the repository root.
 
 For host-side local transcription, do not use Docker. Copy the root
 `.env.example` values into an ignored runtime `.env`, set
