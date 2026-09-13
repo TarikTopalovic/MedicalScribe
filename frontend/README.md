@@ -1,23 +1,17 @@
 # MediScribe desktop renderer
 
-Bosnian clinician-facing renderer for the Electron application. It has one
-in-memory session at a time: select a processing path, explicitly approve a
-cloud utterance, record it, review the final transcript, and prepare an
-editable local SOAP draft. Audio, transcript, and draft data are never written
-to browser storage.
+This renderer packages the downloaded `MediScribe.dc.html` Design Canvas
+export without redesigning it. The exact export, design system, and runtime
+are in `public/design/`; `index.html` displays it directly in Electron.
+React is bundled locally so the export does not fetch UI code from a CDN.
 
-The renderer calls only these loopback endpoints:
+The exported screens are a visual interactive prototype and include simulated
+accounts, visits, transcript segments, and note actions. They are not yet
+connected to `backend/server.js`, microphone capture, OpenRouter, or Supabase.
+Do not treat demo patient data, signatures, or status indicators as real
+clinical data processing.
 
-- `GET /api/config` for non-secret capability and route information;
-- `POST /api/transcribe` once after a clinician ends an approved cloud
-  utterance; and
-- `POST /api/structure` to produce the deterministic local draft.
-
-`MAI Transcribe 2` and `Whisper Large v3` can be selected in Settings. The
-server resolves the selected profile and remains the only place an OpenRouter
-key exists. A local Python streaming runtime is intentionally shown as
-unavailable until it is connected to the desktop API; the UI does not pretend
-that it is recording locally.
-
-See [../docs/README.md](../docs/README.md) for Docker/Electron startup and
-the external-processing guard.
+The separate Node API remains available for its existing approved-cloud
+transcription and deterministic local-draft routes. See
+[../docs/README.md](../docs/README.md) for Docker/Electron startup and the
+external-processing guard.

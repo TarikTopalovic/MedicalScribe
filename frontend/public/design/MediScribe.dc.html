@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-ad348bf4-19ff-4820-9ecf-debae851ca7c/styles.css">
+<style>
+  body { margin:0; background:#F2F2F5; }
+  a { color:#0071E3; text-decoration:none; }
+  a:hover { color:#0058B9; }
+  button { font-family:inherit; cursor:pointer; border:none; background:none; }
+  button:disabled { cursor:not-allowed; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid #0071E3; outline-offset:2px; }
+  input, select, textarea { font-family:inherit; }
+  @keyframes zin { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  @keyframes zpulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+  @keyframes zbar { 0%,100% { transform:scaleY(.35); } 50% { transform:scaleY(1); } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F2F2F5;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Archivo',sans-serif;color:#1D1D1F;-webkit-font-smoothing:antialiased">
+
+  <div style="position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #E3E3E7">
+    <div style="max-width:960px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;background:{{ statusBg }};border:1px solid {{ statusBorder }};color:{{ statusFg }};border-radius:980px;padding:5px 11px;font-size:12px;font-weight:600">
+        <span style="width:6px;height:6px;border-radius:50%;background:{{ statusDot }}"></span>
+        <span>{{ statusLabel }}</span>
+      </div>
+      <div style="font-size:12.5px;font-weight:500;color:#6E6E73">Jezik transkripcije: bosanski</div>
+      <div style="flex:1;min-width:8px"></div>
+      <sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative">
+          <button onClick="{{ goReports }}" aria-label="{{ draftsTitle }}" title="{{ draftsTitle }}" style="width:34px;height:34px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#6E6E73" style-hover="background:#F0F0F3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15.5V10a6 6 0 0 0-12 0v5.5L4.5 18h15z"></path><path d="M10 21a2.2 2.2 0 0 0 4 0"></path></svg>
+          </button>
+          <sc-if value="{{ hasDrafts }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;top:-2px;right:-2px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:980px;background:#D62B20;color:#fff;border:2px solid #fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;pointer-events:none">{{ draftCount }}</span>
+          </sc-if>
+        </div>
+        <div style="position:relative">
+          <button onClick="{{ toggleAccountMenu }}" style="display:flex;align-items:center;gap:8px;padding:5px 8px 5px 5px;border-radius:980px;background:{{ accountRowBg }};border:1px solid #E3E3E7" style-hover="background:#F0F0F3">
+            <span style="width:26px;height:26px;flex:none;border-radius:50%;background:#D9E7FA;color:#0058B9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{ activeIni }}</span>
+            <span style="font-size:12.5px;font-weight:600;letter-spacing:-0.01em">{{ activeShort }}</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#86868B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <sc-if value="{{ accountMenuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:42px;right:0;width:258px;background:#fff;border:1px solid #E3E3E7;border-radius:14px;box-shadow:0 16px 38px rgba(0,0,0,.16);padding:6px;z-index:40;animation:zin .16s ease both">
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B;padding:7px 9px 5px">Prijavljeni računi</div>
+              <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="2">
+                <button onClick="{{ a.pick }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 9px;border-radius:9px;background:{{ a.bg }}" style-hover="background:#F2F2F4">
+                  <span style="width:26px;height:26px;flex:none;border-radius:50%;background:{{ a.avBg }};color:{{ a.avFg }};display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700">{{ a.ini }}</span>
+                  <span style="min-width:0;flex:1">
+                    <span style="display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</span>
+                    <span style="display:block;font-size:11px;color:#86868B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.dept }}</span>
+                  </span>
+                  <span style="font-size:12px;font-weight:700;color:#0071E3;flex:none">{{ a.mark }}</span>
+                </button>
+              </sc-for>
+              <div style="height:1px;background:#ECECEF;margin:6px 4px"></div>
+              <button onClick="{{ addAccount }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px;border-radius:9px;color:#0071E3;font-size:12.5px;font-weight:600" style-hover="background:#F1F7FE">
+                <span style="width:26px;height:26px;flex:none;border-radius:50%;border:1px dashed #A9C9F0;display:flex;align-items:center;justify-content:center">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+                </span>
+                <span>Dodaj account</span>
+              </button>
+              <button onClick="{{ askLogOut }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px;border-radius:9px;color:#C0281A;font-size:12.5px;font-weight:600" style-hover="background:#FDF1EF">
+                <span style="width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5M21 12H9"></path></svg>
+                </span>
+                <span>Odjavi se</span>
+              </button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ errorActive }}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="background:#FDF3F1;border-bottom:1px solid #F6D9D3">
+      <div style="max-width:960px;margin:0 auto;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0281A" stroke-width="2.1" stroke-linecap="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16.5v.01"></path></svg>
+        <div style="min-width:200px;flex:1">
+          <div style="font-size:13.5px;font-weight:700;color:#8E1F14">{{ errorTitle }}</div>
+          <div style="font-size:13px;color:#8E1F14;line-height:1.5;margin-top:3px">{{ errorText }}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-if value="{{ errorOffersLocal }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ switchToLocal }}" style="background:#fff;border:1px solid #E7C4BD;color:#8E1F14;border-radius:980px;padding:8px 14px;font-size:12.5px;font-weight:600" style-hover="background:#FBEAE7">Prebaci na lokalno</button>
+          </sc-if>
+          <button onClick="{{ retryError }}" style="background:#C0281A;color:#fff;border-radius:980px;padding:8px 14px;font-size:12.5px;font-weight:600" style-hover="background:#A02115">Ponovi namjerno</button>
+          <button onClick="{{ dismissError }}" style="color:#8E1F14;border-radius:980px;padding:8px 12px;font-size:12.5px;font-weight:600" style-hover="background:#FBEAE7">Odbaci</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="max-width:1140px;margin:0 auto;padding:18px 16px 56px;display:flex;flex-wrap:wrap;gap:16px;align-items:stretch">
+
+    <sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1 1 210px;min-width:190px;max-width:240px;align-self:stretch;background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:16px 14px;display:flex;flex-direction:column;gap:16px;min-height:360px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;flex:none;border-radius:10px;background:#fff;border:1px solid #E3E3E7;display:flex;align-items:center;justify-content:center">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#D62B20" stroke-width="4.4" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"></path></svg>
+        </div>
+        <div style="font-size:15px;font-weight:700;letter-spacing:-0.02em">MediScribe</div>
+      </div>
+      <div style="height:1px;background:#ECECEF"></div>
+      <div style="font-size:12px;color:#86868B;line-height:1.5">{{ railNote }}</div>
+      <div style="flex:1"></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button onClick="{{ openPrivacy }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;font-size:13px;font-weight:600;color:#1D1D1F;padding:9px 10px;border-radius:9px" style-hover="background:#F0F0F3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E6E73" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v6c0 4.4-3.1 8.3-7.5 9.5C7.6 20.3 4.5 16.4 4.5 12V6z"></path></svg>
+          <span>Privatnost</span>
+        </button>
+        <button onClick="{{ openSettings }}" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;font-size:13px;font-weight:600;color:#1D1D1F;padding:9px 10px;border-radius:9px" style-hover="background:#F0F0F3">
+          <span style="display:flex;color:#6E6E73"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.9 14.6a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"></path></svg></span>
+          <span>Postavke</span>
+        </button>
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="flex:1 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+    <sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ goBack }}" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6E6E73;padding:7px 12px 7px 9px;border-radius:980px;background:#fff;border:1px solid #E3E3E7" style-hover="background:#F0F0F3">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
+            <span>Danas</span>
+          </button>
+        </sc-if>
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.go }}" style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:7px 13px;border-radius:980px;background:{{ t.bg }};color:{{ t.fg }};border:1px solid {{ t.border }}">
+            <sc-if value="{{ t.live }}" hint-placeholder-val="{{ false }}">
+              <span style="width:7px;height:7px;border-radius:50%;background:#E0301A;animation:zpulse 1.4s infinite"></span>
+            </sc-if>
+            <span>{{ t.label }}</span>
+            <sc-if value="{{ t.count }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:11.5px;opacity:.6">{{ t.count }}</span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSignin }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Prijava" style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:32px 22px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px">
+            <div style="width:40px;height:40px;flex:none;border-radius:12px;background:#FFFFFF;border:1px solid #E3E3E7;display:flex;align-items:center;justify-content:center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D62B20" stroke-width="4.4" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"></path></svg>
+            </div>
+            <div style="font-size:30px;font-weight:700;letter-spacing:-0.035em;line-height:1.1">MediScribe</div>
+          </div>
+          <div style="font-size:16px;font-weight:600;color:#1D1D1F;margin-top:10px">Dobro došli</div>
+          <div style="font-size:14px;color:#6E6E73;margin-top:5px;line-height:1.55;max-width:42ch">Prijavite se da nastavite. Svaki transkript i nalaz ostaju nacrt do vaše provjere.</div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px;width:100%;max-width:360px;text-align:left">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#6E6E73">
+              <span>Korisnik</span>
+              <span style="position:relative;display:block">
+                <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);display:flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#86868B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"></path></svg></span>
+                <input value="emir.begic@kcus.ba" readonly="readonly" style="font-size:15px;padding:12px 14px 12px 40px;border:1px solid #D9D9DE;border-radius:11px;background:#fff;color:#1D1D1F;box-sizing:border-box;width:100%" />
+              </span>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#6E6E73">
+              <span>Lozinka</span>
+              <span style="position:relative;display:block">
+                <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);display:flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#86868B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7.5a4 4 0 0 1 8 0V11"></path></svg></span>
+                <input type="{{ pwType }}" value="doktormediscribe" readonly="readonly" style="font-size:15px;padding:12px 44px 12px 40px;border:1px solid #D9D9DE;border-radius:11px;background:#fff;color:#1D1D1F;box-sizing:border-box;width:100%" />
+                <button onClick="{{ togglePw }}" aria-label="{{ pwLabel }}" title="{{ pwLabel }}" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#86868B" style-hover="background:#F0F0F3">
+                  <sc-if value="{{ pwHidden }}" hint-placeholder-val="{{ true }}">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.6-6.5 9.5-6.5S21.5 12 21.5 12s-3.6 6.5-9.5 6.5S2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  </sc-if>
+                  <sc-if value="{{ pwShown }}" hint-placeholder-val="{{ false }}">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"></path><path d="M9.9 5.7A9.6 9.6 0 0 1 12 5.5c5.9 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.4 3.3M6.2 7.7A17 17 0 0 0 2.5 12S6.1 18.5 12 18.5c1.3 0 2.4-.3 3.5-.8"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg>
+                  </sc-if>
+                </button>
+              </span>
+            </label>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <button onClick="{{ toggleRemember }}" style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1D1D1F;padding:4px 2px">
+                <span style="width:18px;height:18px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:{{ rememberBg }};color:#fff;border:1px solid {{ rememberBorder }}">{{ rememberMark }}</span>
+                <span>Zapamti me</span>
+              </button>
+              <a href="#lozinka" style="font-size:13px;font-weight:600">Zaboravili ste lozinku?</a>
+            </div>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;margin-top:26px;flex-wrap:wrap">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Odjeljenje klinike</div>
+            <div style="font-size:11.5px;color:#86868B">{{ deptSavedNote }}</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px">
+            <sc-for list="{{ deptOptions }}" as="d" hint-placeholder-count="1">
+              <button onClick="{{ d.pick }}" style="font-size:13.5px;font-weight:600;padding:10px 15px;border-radius:980px;background:{{ d.bg }};color:{{ d.fg }};border:1px solid {{ d.border }}">{{ d.name }}</button>
+            </sc-for>
+            <sc-if value="{{ canAddDept }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ toggleDeptPicker }}" style="display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;padding:10px 15px;border-radius:980px;background:{{ deptPickerBg }};color:#0071E3;border:1px dashed #A9C9F0" style-hover="background:#F1F7FE">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+                <span>Dodaj odjel</span>
+              </button>
+            </sc-if>
+          </div>
+          <sc-if value="{{ deptPickerOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:10px;width:100%;max-width:420px;background:#FBFBFC;border:1px solid #E9E9EC;border-radius:13px;padding:13px 14px;animation:zin .16s ease both">
+              <div style="font-size:12px;font-weight:600;color:#6E6E73">Dostupni odjeli</div>
+              <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:9px">
+                <sc-for list="{{ addableDepts }}" as="d" hint-placeholder-count="3">
+                  <button onClick="{{ d.add }}" style="font-size:13px;font-weight:600;padding:9px 14px;border-radius:980px;background:#fff;color:#1D1D1F;border:1px solid #D9D9DE" style-hover="background:#F0F0F3">{{ d.name }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <button onClick="{{ signIn }}" style="margin-top:24px;width:100%;max-width:360px;background:#0071E3;color:#fff;border-radius:980px;padding:13px 24px;font-size:15px;font-weight:600" style-hover="background:#0058B9">Prijavi se</button>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;font-size:12.5px;color:#86868B">
+            <span style="width:6px;height:6px;border-radius:50%;background:#30B050;flex:none"></span>
+            <span>Zvuk se obrađuje na uređaju i ne pohranjuje se.</span>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px;align-items:center">
+          <button onClick="{{ toggleRules }}" aria-expanded="{{ rulesOpen }}" style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B;padding:6px 12px;border-radius:980px" style-hover="background:#F0F0F3">
+            <span>Pravila koja aplikacija poštuje</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform:{{ rulesArrow }}"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <sc-if value="{{ rulesOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px;width:100%;animation:zin .18s ease both">
+            <div><div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Privremeno nije konačno</div><div style="font-size:13.5px;color:#6E6E73;margin-top:4px;line-height:1.5">Privremeni tekst je posebno označen. Nacrt nastaje samo iz konačnog transkripta.</div></div>
+            <div><div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Vanjska obrada uz odobrenje</div><div style="font-size:13.5px;color:#6E6E73;margin-top:4px;line-height:1.5">Prije snimanja piše ko prima zvuk. Bez potvrde nema slanja.</div></div>
+            <div><div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Ljekar odobrava</div><div style="font-size:13.5px;color:#6E6E73;margin-top:4px;line-height:1.5">Nalaz ulazi u karton samo nakon vaše provjere i potpisa.</div></div>
+          </div>
+          </sc-if>
+          <div style="font-size:12px;color:#86868B;line-height:1.5;text-align:center">Demonstracija koristi izmišljene podatke o pacijentu.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isToday }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Danas" style="display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#86868B">Subota, 12. septembar 2026.</div>
+          <div style="font-size:26px;font-weight:700;letter-spacing:-0.03em;margin-top:3px">Dobro jutro, {{ activeShort }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px">
+          <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:15px 17px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Posjete danas</div>
+            <div style="font-size:28px;font-weight:600;letter-spacing:-0.03em;margin-top:5px">6</div>
+          </div>
+          <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:15px 17px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Nacrti</div>
+            <div style="font-size:28px;font-weight:600;letter-spacing:-0.03em;margin-top:5px;color:#C77700">{{ draftCount }}</div>
+          </div>
+          <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:15px 17px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Obrada</div>
+            <div style="font-size:17px;font-weight:600;letter-spacing:-0.02em;margin-top:9px">{{ modeShort }}</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+          <div style="padding:14px 17px;border-bottom:1px solid #ECECEF;font-size:14px;font-weight:600;letter-spacing:-0.01em">Raspored</div>
+          <sc-for list="{{ visits }}" as="v" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 17px;border-bottom:1px solid #F2F2F4;flex-wrap:wrap">
+              <div style="width:46px;flex:none;font-size:14px;font-weight:600;color:#6E6E73;font-variant-numeric:tabular-nums">{{ v.time }}</div>
+              <div style="width:30px;height:30px;flex:none;border-radius:50%;background:#F0F0F3;color:#6E6E73;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{ v.initials }}</div>
+              <div style="flex:1;min-width:120px">
+                <div style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em">{{ v.name }}</div>
+                <div style="font-size:12.5px;color:#86868B;margin-top:2px">{{ v.reason }}</div>
+              </div>
+              <div style="font-size:12px;font-weight:600;padding:5px 11px;border-radius:980px;background:{{ v.chipBg }};color:{{ v.chipFg }}">{{ v.status }}</div>
+              <sc-if value="{{ v.actionable }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ v.action }}" style="background:#0071E3;color:#fff;border-radius:980px;padding:9px 16px;font-size:13px;font-weight:600" style-hover="background:#0058B9">{{ v.actionLabel }}</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isConsent }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Sesija" style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#86868B">Korak 1 od 3 · priprema sesije</div>
+          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Saglasnost i način obrade</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:14px 17px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="width:36px;height:36px;flex:none;border-radius:50%;background:#F0F0F3;color:#6E6E73;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700">AH</div>
+          <div style="flex:1;min-width:150px">
+            <div style="font-size:15px;font-weight:600;letter-spacing:-0.02em">Amina Hodžić · 34 g.</div>
+            <div style="font-size:12.5px;color:#86868B;margin-top:2px">Uporan kašalj i temperatura · 10:15 · {{ activeDept }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#6E6E73">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6E6E73" stroke-width="2.1" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v4"></path><path d="M3 3l18 18"></path></svg>
+            <span>Mikrofon još nije aktivan</span>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:20px 18px">
+          <div style="font-size:16px;font-weight:600;letter-spacing:-0.02em">Saglasnost pacijenta</div>
+          <div style="font-size:13.5px;color:#6E6E73;line-height:1.55;margin-top:6px">Pročitajte pacijentu i potvrdite svaku stavku prije snimanja.</div>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-top:16px">
+            <sc-for list="{{ consentItems }}" as="c" hint-placeholder-count="3">
+              <button onClick="{{ c.toggle }}" style="display:flex;align-items:flex-start;gap:12px;text-align:left;padding:14px 15px;border-radius:12px;background:{{ c.bg }};border:1px solid {{ c.border }}">
+                <span style="width:20px;height:20px;flex:none;border-radius:50%;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:{{ c.dotBg }};color:#fff;border:1px solid {{ c.dotBorder }}">{{ c.mark }}</span>
+                <span style="min-width:0">
+                  <span style="display:block;font-size:14px;font-weight:600;letter-spacing:-0.01em">{{ c.title }}</span>
+                  <span style="display:block;font-size:13px;color:#6E6E73;line-height:1.5;margin-top:3px">{{ c.body }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="font-size:12.5px;color:#86868B;margin-top:12px">{{ consentProgress }}</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:20px 18px">
+          <div style="font-size:16px;font-weight:600;letter-spacing:-0.02em">Način transkripcije</div>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
+            <sc-for list="{{ modeOptions }}" as="m" hint-placeholder-count="2">
+              <button onClick="{{ m.pick }}" disabled="{{ m.disabled }}" style="display:flex;align-items:flex-start;gap:12px;text-align:left;padding:14px 15px;border-radius:12px;background:{{ m.bg }};border:1px solid {{ m.border }};opacity:{{ m.opacity }}">
+                <span style="width:18px;height:18px;flex:none;border-radius:50%;margin-top:1px;border:2px solid {{ m.ring }};background:#fff;display:flex;align-items:center;justify-content:center">
+                  <span style="width:8px;height:8px;border-radius:50%;background:{{ m.fill }}"></span>
+                </span>
+                <span style="min-width:0">
+                  <span style="display:block;font-size:14px;font-weight:600;letter-spacing:-0.01em">{{ m.title }}</span>
+                  <span style="display:block;font-size:13px;color:#6E6E73;line-height:1.5;margin-top:3px">{{ m.body }}</span>
+                  <sc-if value="{{ m.reason }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:block;font-size:12.5px;font-weight:600;color:#9A5B00;line-height:1.45;margin-top:6px">{{ m.reason }}</span>
+                  </sc-if>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ cloudChosen }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:12px;background:#FCF9F2;border:1px solid #EEDFC2;border-radius:12px;padding:15px">
+              <button onClick="{{ toggleCloudApproval }}" style="display:flex;align-items:flex-start;gap:11px;text-align:left;width:100%">
+                <span style="width:20px;height:20px;flex:none;border-radius:5px;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:{{ approvalBoxBg }};color:#fff;border:1px solid {{ approvalBoxBorder }}">{{ approvalMark }}</span>
+                <span style="font-size:13.5px;line-height:1.55;color:#5E4406">Potvrđujem da imam osnov i odobrenje za slanje ove audio izjave vanjskom obrađivaču.</span>
+              </button>
+              <div style="font-size:12px;color:#8A6A2A;line-height:1.5;margin-top:9px;padding-left:31px">Prima: {{ cloudProfile }} · {{ cloudRoute }}. Šalju se samo završene izjave, nikada djelimičan zvuk. Ovo nije izjava o pravnoj usklađenosti — <a href="#upravljanje" onClick="{{ openPrivacy }}">kontrolna lista upravljanja podacima</a>.</div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap">
+            <button onClick="{{ startVisit }}" disabled="{{ startBlocked }}" style="background:{{ startBtnBg }};color:#fff;border-radius:980px;padding:12px 22px;font-size:14.5px;font-weight:600">Pokreni snimanje</button>
+            <button onClick="{{ goToday }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:12px 18px;font-size:14.5px;font-weight:600" style-hover="background:#E6E6EA">Odustani</button>
+            <div style="font-size:12.5px;color:#86868B;flex:1;min-width:160px">{{ startHint }}</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isVisit }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Snimanje" style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#86868B">Korak 2 od 3 · snimanje</div>
+          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Amina Hodžić · sesija u toku</div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="width:10px;height:10px;flex:none;border-radius:50%;background:{{ recDot }};animation:{{ recAnim }}"></span>
+              <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">{{ recLabel }}</span>
+            </div>
+            <div style="font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;color:#1D1D1F">{{ clock }}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;align-items:flex-end;gap:3px;height:22px" aria-hidden="true">
+                <sc-for list="{{ meterBars }}" as="b" hint-placeholder-count="6">
+                  <span style="width:4px;height:22px;border-radius:2px;background:{{ b.color }};transform-origin:bottom;transform:scaleY({{ b.scale }});animation:{{ b.anim }}"></span>
+                </sc-for>
+              </div>
+              <span style="font-size:12px;color:#6E6E73">{{ meterText }}</span>
+            </div>
+            <div style="flex:1;min-width:8px"></div>
+            <sc-if value="{{ phaseLabel }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:7px;background:#FCF3E3;border:1px solid #EEDFC2;color:#8A5B00;border-radius:980px;padding:6px 12px;font-size:12px;font-weight:600">
+                <span style="width:6px;height:6px;border-radius:50%;background:#C77700;animation:zpulse 1s infinite"></span>
+                <span>{{ phaseLabel }}</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+            <button onClick="{{ finishUtterance }}" disabled="{{ finishBlocked }}" style="background:{{ finishBtnBg }};color:#fff;border-radius:980px;padding:11px 18px;font-size:14px;font-weight:600">Završi izjavu</button>
+            <button onClick="{{ goReview }}" disabled="{{ reviewBlocked }}" style="background:{{ reviewBtnBg }};color:{{ reviewBtnFg }};border-radius:980px;padding:11px 18px;font-size:14px;font-weight:600;border:1px solid {{ reviewBtnBorder }}">Nastavi na pregled</button>
+            <div style="flex:1;min-width:8px"></div>
+            <button onClick="{{ askClearSession }}" style="color:#C0281A;font-size:13px;font-weight:600;padding:10px 14px;border-radius:980px" style-hover="background:#FDF1EF">Obriši trenutnu sesiju</button>
+          </div>
+          <div style="font-size:12px;color:#86868B;line-height:1.5">{{ captureNotice }}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;align-items:start">
+          <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 17px;border-bottom:1px solid #ECECEF">
+              <div style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em">Transkript</div>
+              <div style="flex:1"></div>
+              <div style="font-size:11.5px;color:#86868B">{{ lineCount }}</div>
+            </div>
+            <div ref="{{ scrollRef }}" style="max-height:420px;overflow:auto;padding:15px 17px;display:flex;flex-direction:column;gap:14px">
+              <sc-for list="{{ lines }}" as="l" hint-placeholder-count="4">
+                <div style="animation:zin .3s ease both">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:{{ l.color }}">{{ l.sp }}</span>
+                    <span style="font-size:11px;color:#B0B0B5;font-variant-numeric:tabular-nums">{{ l.at }}</span>
+                    <sc-if value="{{ l.warn }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:10.5px;font-weight:700;color:#8A5B00;background:#FCF3E3;border:1px solid #EEDFC2;border-radius:980px;padding:2px 8px">{{ l.warn }}</span>
+                    </sc-if>
+                  </div>
+                  <div style="font-size:14.5px;line-height:1.55">{{ l.t }}</div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ provisional }}" hint-placeholder-val="{{ false }}">
+                <div style="border:1px dashed #D2D2D7;background:#FAFAFC;border-radius:12px;padding:11px 13px">
+                  <div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A5B00">Privremeno — može se promijeniti</div>
+                  <div style="font-size:14px;line-height:1.55;color:#6E6E73;margin-top:5px">{{ provisional }}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ idleNotice }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:13px;color:#86868B;line-height:1.5">{{ idleNotice }}</div>
+              </sc-if>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:10px;padding:13px 17px;border-bottom:1px solid #ECECEF;flex-wrap:wrap">
+                <div style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em">Privremeni nacrt · SOAP</div>
+                <div style="flex:1"></div>
+                <div style="width:80px;height:5px;border-radius:5px;background:#ECECEF;overflow:hidden">
+                  <div style="height:100%;background:#0071E3;border-radius:5px;transition:width .4s ease;width:{{ progress }}"></div>
+                </div>
+                <div style="font-size:11.5px;color:#86868B;font-variant-numeric:tabular-nums">{{ progress }}</div>
+              </div>
+              <div style="padding:4px 17px 14px">
+                <sc-for list="{{ soap }}" as="s" hint-placeholder-count="4">
+                  <div style="padding:13px 0;border-bottom:1px solid #F2F2F4">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B;margin-bottom:6px">{{ s.label }}</div>
+                    <sc-for list="{{ s.items }}" as="row" hint-placeholder-count="2">
+                      <div style="font-size:14px;line-height:1.6;animation:zin .35s ease both">{{ row.t }}</div>
+                    </sc-for>
+                    <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-size:14px;line-height:1.6;color:#C2C2C7">Čeka razgovor…</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <div style="font-size:12px;color:#8A5B00;line-height:1.5;padding-top:12px">Privremeni nacrt nije zapis. Nalaz se priprema iz konačnog transkripta nakon što završite izjavu.</div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+              <div style="padding:13px 17px;border-bottom:1px solid #ECECEF;font-size:13.5px;font-weight:600;letter-spacing:-0.01em">Za provjeru</div>
+              <div style="padding:2px 17px 12px">
+                <sc-for list="{{ flags }}" as="f" hint-placeholder-count="1">
+                  <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #F2F2F4;animation:zin .35s ease both">
+                    <span style="width:7px;height:7px;border-radius:50%;margin-top:6px;flex:none;background:{{ f.dot }}"></span>
+                    <div style="min-width:0">
+                      <div style="font-size:13px;font-weight:600;letter-spacing:-0.01em">{{ f.kind }}</div>
+                      <div style="font-size:13px;color:#6E6E73;line-height:1.5;margin-top:2px">{{ f.text }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ noFlags }}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:13px;color:#C2C2C7;padding:11px 0">Nema stavki.</div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Pregled i odobravanje" style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#86868B">Korak 3 od 3 · pregled i odobrenje</div>
+          <div style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:4px">Amina Hodžić · 12.09.2026.</div>
+          <div style="font-size:13px;color:#6E6E73;margin-top:4px">{{ activeName }} · {{ activeDept }} · Šablon: SOAP ambulantni · {{ modeShort }}</div>
+        </div>
+
+        <div style="background:#FCF9F2;border:1px solid #EEDFC2;border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.55;color:#5E4406">Nacrt nije potvrđen medicinski zapis. Kliničar mora provjeriti, dopuniti i odobriti sadržaj prije upotrebe.</div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid #ECECEF;flex-wrap:wrap">
+            <div style="font-size:14.5px;font-weight:600;letter-spacing:-0.02em">Konačni transkript</div>
+            <div style="font-size:11.5px;font-weight:700;color:#1F7A36;background:#F0F7F1;border:1px solid #D6EBD9;border-radius:980px;padding:4px 10px">Konačan</div>
+            <div style="flex:1;min-width:8px"></div>
+            <div style="font-size:11.5px;color:#86868B">{{ lineCount }} · jedna izjava</div>
+          </div>
+
+          <sc-if value="{{ confidenceWarning }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#FCF9F2;border-bottom:1px solid #EEDFC2;padding:11px 17px;font-size:12.5px;color:#8A5B00;line-height:1.5">{{ confidenceWarning }}</div>
+          </sc-if>
+
+          <div style="padding:6px 17px 14px">
+            <sc-for list="{{ segments }}" as="s" hint-placeholder-count="4">
+              <div style="padding:12px 0;border-bottom:1px solid #F2F2F4;background:{{ s.bg }};border-radius:8px">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px">
+                  <span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:{{ s.color }}">{{ s.sp }}</span>
+                  <span style="font-size:11px;color:#B0B0B5;font-variant-numeric:tabular-nums">{{ s.span }}</span>
+                  <sc-if value="{{ s.warn }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:10.5px;font-weight:700;color:#8A5B00;background:#FCF3E3;border:1px solid #EEDFC2;border-radius:980px;padding:2px 8px">{{ s.warn }}</span>
+                  </sc-if>
+                  <sc-if value="{{ s.unknown }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ s.fixSpeaker }}" style="font-size:11px;font-weight:700;color:#0071E3;background:#EAF3FD;border-radius:980px;padding:3px 9px" style-hover="background:#D8E9FB">Označi kao Pacijent</button>
+                  </sc-if>
+                  <sc-if value="{{ s.edited }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:10.5px;font-weight:700;color:#6E6E73;background:#F0F0F3;border-radius:980px;padding:2px 8px">Uredio ljekar</span>
+                  </sc-if>
+                </div>
+                <sc-if value="{{ s.editing }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <textarea value="{{ segDraft }}" onChange="{{ onSegInput }}" rows="3" style="width:100%;border:1px solid #0071E3;border-radius:10px;padding:9px 11px;font-size:14px;line-height:1.55;box-sizing:border-box;resize:vertical"></textarea>
+                    <div style="display:flex;gap:8px">
+                      <button onClick="{{ saveSeg }}" style="background:#0071E3;color:#fff;border-radius:980px;padding:8px 15px;font-size:13px;font-weight:600" style-hover="background:#0058B9">Sačuvaj</button>
+                      <button onClick="{{ cancelSeg }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:8px 15px;font-size:13px;font-weight:600" style-hover="background:#E6E6EA">Odustani</button>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ s.reading }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;gap:10px;align-items:flex-start">
+                    <div style="font-size:14.5px;line-height:1.6;flex:1">{{ s.t }}</div>
+                    <button onClick="{{ s.edit }}" style="flex:none;font-size:11px;font-weight:700;color:#0071E3;background:#EAF3FD;border-radius:980px;padding:4px 10px" style-hover="background:#D8E9FB">Uredi</button>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{ manualOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:14px 0 4px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Ručno dodan tekst</div>
+                <textarea value="{{ manualText }}" onChange="{{ onManualInput }}" rows="3" placeholder="Upišite šta je izgovoreno, a nije prepisano" style="width:100%;border:1px solid #D2D2D7;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.55;box-sizing:border-box;resize:vertical"></textarea>
+                <div style="font-size:12px;color:#86868B">Ručni tekst ostaje u memoriji sesije i jasno je označen kao unos ljekara.</div>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;gap:9px;flex-wrap:wrap;padding-top:14px">
+              <button onClick="{{ askRepeat }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:9px 15px;font-size:13px;font-weight:600" style-hover="background:#E6E6EA">Ponovi ovu izjavu</button>
+              <button onClick="{{ toggleManual }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:9px 15px;font-size:13px;font-weight:600" style-hover="background:#E6E6EA">{{ manualLabel }}</button>
+              <button onClick="{{ askClearSession }}" style="color:#C0281A;border-radius:980px;padding:9px 15px;font-size:13px;font-weight:600" style-hover="background:#FDF1EF">Obriši trenutnu sesiju</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid #ECECEF;flex-wrap:wrap">
+            <div style="font-size:14.5px;font-weight:600;letter-spacing:-0.02em">Nacrt nalaza</div>
+            <div style="font-size:11.5px;font-weight:700;color:{{ noteChipFg }};background:{{ noteChipBg }};border-radius:980px;padding:4px 10px">{{ noteChip }}</div>
+            <div style="flex:1;min-width:8px"></div>
+            <div style="font-size:11.5px;color:#86868B">{{ noteMeta }}</div>
+          </div>
+
+          <sc-if value="{{ noteStale }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FCF9F2;border-bottom:1px solid #EEDFC2;padding:12px 17px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="font-size:12.5px;color:#8A5B00;line-height:1.5;flex:1;min-width:180px">Transkript je izmijenjen nakon pripreme nacrta. Nacrt je zastario — pripremite ga ponovo prije odobrenja.</div>
+              <button onClick="{{ regenerate }}" style="background:#C77700;color:#fff;border-radius:980px;padding:8px 14px;font-size:12.5px;font-weight:600" style-hover="background:#A66300">Ponovo pripremi lokalni nacrt</button>
+            </div>
+          </sc-if>
+
+          <div style="padding:4px 17px 16px">
+            <sc-for list="{{ noteFields }}" as="f" hint-placeholder-count="4">
+              <div style="padding:14px 0;border-bottom:1px solid #F2F2F4">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">
+                  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">{{ f.label }}</div>
+                  <sc-if value="{{ f.touched }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:10.5px;font-weight:700;color:#6E6E73;background:#F0F0F3;border-radius:980px;padding:2px 8px">Uredio ljekar</span>
+                  </sc-if>
+                </div>
+                <textarea value="{{ f.text }}" onChange="{{ f.onInput }}" disabled="{{ approved }}" rows="{{ f.rows }}" placeholder="{{ f.placeholder }}" style="width:100%;border:1px solid {{ f.border }};border-radius:11px;padding:11px 13px;font-size:14px;line-height:1.6;box-sizing:border-box;resize:vertical;background:{{ f.bg }};color:#1D1D1F"></textarea>
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px">
+                  <sc-if value="{{ f.hasEvidence }}" hint-placeholder-val="{{ true }}">
+                    <span style="font-size:11.5px;color:#86868B">Izvor u transkriptu:</span>
+                  </sc-if>
+                  <sc-for list="{{ f.evidence }}" as="e" hint-placeholder-count="2">
+                    <button onClick="{{ e.jump }}" style="font-size:11.5px;font-weight:600;color:#0071E3;background:#EAF3FD;border-radius:980px;padding:4px 10px" style-hover="background:#D8E9FB">{{ e.label }}</button>
+                  </sc-for>
+                  <sc-if value="{{ f.noEvidence }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:11.5px;color:#8A5B00">Nema automatskog izvora</span>
+                  </sc-if>
+                </div>
+                <sc-if value="{{ f.note }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12.5px;color:#8A5B00;line-height:1.5;background:#FCF9F2;border:1px solid #EEDFC2;border-radius:11px;padding:10px 12px;margin-top:9px">{{ f.note }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+
+            <div style="display:flex;gap:9px;flex-wrap:wrap;padding-top:14px;align-items:center">
+              <button onClick="{{ regenerate }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:9px 15px;font-size:13px;font-weight:600" style-hover="background:#E6E6EA">Ponovo pripremi lokalni nacrt</button>
+              <button onClick="{{ copyDraft }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:9px 15px;font-size:13px;font-weight:600" style-hover="background:#E6E6EA">{{ copyLabel }}</button>
+              <button disabled="{{ true }}" title="Politika izvoza još nije odobrena" style="background:#F7F7F9;color:#B0B0B5;border-radius:980px;padding:9px 15px;font-size:13px;font-weight:600">Izvezi za pregled</button>
+              <div style="font-size:11.5px;color:#86868B;flex:1;min-width:180px">Izvoz je zaključan do odobrenja politike izvoza. Kopiranje ne stavlja podatke u adresu stranice.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;align-items:start">
+          <sc-if value="{{ approved }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#F0F7F1;border:1px solid #D6EBD9;border-radius:16px;padding:17px 18px">
+              <div style="font-size:14.5px;font-weight:700;color:#1F7A36">Nalaz je potpisan</div>
+              <div style="font-size:13px;color:#3C7A4C;line-height:1.55;margin-top:5px">{{ approvedMeta }} Zapis je zaključan; svaka izmjena otvara novu verziju.</div>
+              <button onClick="{{ goReports }}" style="margin-top:13px;background:#1F7A36;color:#fff;border-radius:980px;padding:10px 17px;font-size:13.5px;font-weight:600">Otvori izvještaje</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ notApproved }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:17px 18px">
+              <div style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em">Odobravanje</div>
+              <div style="font-size:13px;color:#6E6E73;line-height:1.55;margin-top:5px">{{ approveHint }}</div>
+              <button onClick="{{ askApprove }}" disabled="{{ approveBlocked }}" style="margin-top:13px;background:{{ approveBtnBg }};color:#fff;border-radius:980px;padding:12px 20px;font-size:14px;font-weight:600;width:100%">Odobri i potpiši</button>
+              <button onClick="{{ goVisit }}" style="margin-top:8px;background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:12px 20px;font-size:14px;font-weight:600;width:100%" style-hover="background:#E6E6EA">Vrati se na snimanje</button>
+            </div>
+          </sc-if>
+
+          <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+            <div style="padding:13px 17px;border-bottom:1px solid #ECECEF;font-size:13.5px;font-weight:600;letter-spacing:-0.01em">Za provjeru</div>
+            <div style="padding:2px 17px 12px">
+              <sc-for list="{{ flags }}" as="f" hint-placeholder-count="3">
+                <div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #F2F2F4">
+                  <span style="width:7px;height:7px;border-radius:50%;margin-top:6px;flex:none;background:{{ f.dot }}"></span>
+                  <div style="min-width:0">
+                    <div style="font-size:13px;font-weight:600;letter-spacing:-0.01em">{{ f.kind }}</div>
+                    <div style="font-size:13px;color:#6E6E73;line-height:1.5;margin-top:2px">{{ f.text }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;padding:15px 17px">
+            <div style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em;margin-bottom:9px">Zapis o obradi</div>
+            <sc-for list="{{ processingRows }}" as="p" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:5px 0"><span style="color:#86868B">{{ p.k }}</span><span style="font-weight:500;text-align:right">{{ p.v }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Izvještaji" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px;align-items:start">
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+          <div style="display:flex;flex-wrap:wrap;gap:8px 12px;padding:12px 17px;border-bottom:1px solid #ECECEF;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">
+            <div style="flex:1 1 120px;min-width:0">Pacijent</div>
+            <div style="width:80px;flex:0 1 auto;min-width:0">Datum</div>
+            <div style="width:44px;flex:0 1 auto;min-width:0">Verz.</div>
+            <div style="flex:1 1 70px;min-width:0;text-align:right">Status</div>
+          </div>
+          <sc-for list="{{ reports }}" as="r" hint-placeholder-count="5">
+            <button onClick="{{ r.select }}" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;width:100%;text-align:left;padding:13px 17px;border-bottom:1px solid #F2F2F4;background:{{ r.bg }}">
+              <div style="flex:1 1 120px;min-width:0">
+                <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+                <div style="font-size:12.5px;color:#86868B;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.kind }}</div>
+              </div>
+              <div style="width:80px;flex:0 1 auto;min-width:0;font-size:12.5px;color:#6E6E73;font-variant-numeric:tabular-nums">{{ r.date }}</div>
+              <div style="width:44px;flex:0 1 auto;min-width:0;font-size:12.5px;color:#6E6E73">{{ r.version }}</div>
+              <div style="flex:1 1 70px;min-width:0;display:flex;justify-content:flex-end">
+                <span style="font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:980px;background:{{ r.chipBg }};color:{{ r.chipFg }};white-space:nowrap">{{ r.status }}</span>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E3E3E7;border-radius:16px;overflow:hidden">
+          <div style="padding:15px 18px;border-bottom:1px solid #ECECEF">
+            <div style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em">Historija verzija</div>
+            <div style="font-size:12.5px;color:#86868B;margin-top:3px">{{ selName }}</div>
+          </div>
+          <div style="padding:17px 18px 20px">
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+              <div style="display:flex;gap:13px">
+                <div style="width:11px;flex:none;display:flex;flex-direction:column;align-items:center">
+                  <span style="width:9px;height:9px;border-radius:50%;margin-top:4px;background:{{ h.dot }};flex:none"></span>
+                  <span style="flex:1;width:1px;background:#E3E3E7;min-height:14px"></span>
+                </div>
+                <div style="padding-bottom:17px;min-width:0">
+                  <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em">{{ h.title }}</span>
+                    <span style="font-size:11.5px;color:#B0B0B5;font-variant-numeric:tabular-nums">{{ h.at }}</span>
+                  </div>
+                  <div style="font-size:13px;color:#6E6E73;line-height:1.5;margin-top:3px">{{ h.text }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    </div>
+  </div>
+
+  <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.32);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto">
+      <div role="dialog" aria-label="Postavke" style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 26px 70px rgba(0,0,0,.3);animation:zin .18s ease both">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #ECECEF">
+          <div style="font-size:17px;font-weight:700;letter-spacing:-0.02em">Postavke</div>
+          <div style="flex:1"></div>
+          <button onClick="{{ closeModals }}" aria-label="Zatvori" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6E6E73" style-hover="background:#F0F0F3">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"></path></svg>
+          </button>
+        </div>
+        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Način obrade</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:9px">
+              <sc-for list="{{ modeOptions }}" as="m" hint-placeholder-count="2">
+                <button onClick="{{ m.pick }}" disabled="{{ m.settingsDisabled }}" style="display:flex;align-items:center;gap:11px;text-align:left;padding:12px 13px;border-radius:11px;background:{{ m.bg }};border:1px solid {{ m.border }};opacity:{{ m.settingsOpacity }}">
+                  <span style="width:17px;height:17px;flex:none;border-radius:50%;border:2px solid {{ m.ring }};background:#fff;display:flex;align-items:center;justify-content:center">
+                    <span style="width:7px;height:7px;border-radius:50%;background:{{ m.fill }}"></span>
+                  </span>
+                  <span style="min-width:0;flex:1">
+                    <span style="display:block;font-size:13.5px;font-weight:600">{{ m.title }}</span>
+                    <sc-if value="{{ m.reason }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:block;font-size:12px;color:#9A5B00;line-height:1.45;margin-top:2px">{{ m.reason }}</span>
+                    </sc-if>
+                  </span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ settingsLocked }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px;color:#8A5B00;line-height:1.5;margin-top:8px">{{ settingsLocked }}</div>
+            </sc-if>
+          </div>
+
+          <div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Profil vanjske transkripcije</div>
+            <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+              <sc-for list="{{ profileOptions }}" as="p" hint-placeholder-count="2">
+                <button onClick="{{ p.pick }}" disabled="{{ p.disabled }}" style="font-size:13px;font-weight:600;padding:9px 14px;border-radius:980px;background:{{ p.bg }};color:{{ p.fg }};border:1px solid {{ p.border }};opacity:{{ p.opacity }}">{{ p.name }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="background:#F7F7F9;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:7px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Gdje ide zvuk (samo za čitanje)</div>
+            <div style="font-size:13.5px;line-height:1.5">{{ routeSummary }}</div>
+            <div style="font-size:12.5px;color:#6E6E73;line-height:1.5">Toplinska zaštita uređaja: {{ thermalText }}</div>
+          </div>
+
+          <div>
+            <label style="display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Mikrofon
+              <select value="{{ mic }}" onChange="{{ onMicChange }}" disabled="{{ captureBusy }}" style="font-size:14px;padding:10px 12px;border:1px solid #D9D9DE;border-radius:11px;background:#fff;color:#1D1D1F;width:100%;text-transform:none;letter-spacing:normal;font-weight:500">
+                <sc-for list="{{ mics }}" as="m" hint-placeholder-count="2">
+                  <option value="{{ m.v }}">{{ m.v }}</option>
+                </sc-for>
+              </select>
+            </label>
+          </div>
+
+          <div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B">Simulacija stanja greške</div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">
+              <sc-for list="{{ errorSims }}" as="e" hint-placeholder-count="3">
+                <button onClick="{{ e.fire }}" style="font-size:12.5px;font-weight:600;padding:8px 12px;border-radius:980px;background:#F0F0F3;color:#1D1D1F;border:1px solid #E3E3E7" style-hover="background:#E6E6EA">{{ e.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid #ECECEF;padding-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button onClick="{{ askClearSession }}" style="background:#FDF1EF;color:#C0281A;border:1px solid #F6D9D3;border-radius:980px;padding:10px 16px;font-size:13.5px;font-weight:600" style-hover="background:#FBE6E2">Obriši trenutnu sesiju</button>
+            <div style="font-size:12px;color:#86868B;flex:1;min-width:170px">Briše transkript, nacrt i stanje snimanja iz memorije. Traži potvrdu.</div>
+          </div>
+          <div style="font-size:12px;color:#86868B;line-height:1.5">Izmjene se primjenjuju na novu izjavu. Profil se ne može mijenjati tokom snimanja ili obrade. Tajni ključevi ostaju na serveru i ne prikazuju se u aplikaciji.</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ privacyOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.32);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto">
+      <div role="dialog" aria-label="Privatnost i vanjska obrada" style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 26px 70px rgba(0,0,0,.3);animation:zin .18s ease both">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #ECECEF">
+          <div style="font-size:17px;font-weight:700;letter-spacing:-0.02em">Privatnost i vanjska obrada</div>
+          <div style="flex:1"></div>
+          <button onClick="{{ closeModals }}" aria-label="Zatvori" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6E6E73" style-hover="background:#F0F0F3">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"></path></svg>
+          </button>
+        </div>
+        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-size:14px;line-height:1.6">Lokalna obrada: govor se pretvara u tekst na ovom računaru. Zvuk ostaje u kratkotrajnom baferu i briše se nakon prepisa.</div>
+          <div style="font-size:14px;line-height:1.6">Vanjska obrada: nakon što izjava završi, samo taj završeni zvučni segment ide na odabrani profil. Djelimičan zvuk se ne šalje, a snimak se ne pohranjuje.</div>
+          <div style="background:#F7F7F9;border-radius:12px;padding:14px 15px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#86868B;margin-bottom:8px">Kontrolna lista upravljanja podacima</div>
+            <sc-for list="{{ governance }}" as="g" hint-placeholder-count="4">
+              <div style="display:flex;gap:9px;padding:5px 0;font-size:13.5px;line-height:1.5">
+                <span style="color:#0071E3;font-weight:700;flex:none">·</span>
+                <span>{{ g.t }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-size:12.5px;color:#86868B;line-height:1.55">Aplikacija ne tvrdi pravnu usklađenost. Odgovornost za osnov obrade i odobrenje ostaje na ustanovi i ljekaru.</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.34);display:flex;align-items:center;justify-content:center;padding:20px">
+      <div role="dialog" aria-label="{{ confirmTitle }}" style="width:min(420px,100%);background:#fff;border-radius:18px;box-shadow:0 26px 70px rgba(0,0,0,.32);padding:22px;animation:zin .16s ease both">
+        <div style="font-size:17px;font-weight:700;letter-spacing:-0.02em">{{ confirmTitle }}</div>
+        <div style="font-size:13.5px;color:#6E6E73;line-height:1.55;margin-top:8px">{{ confirmBody }}</div>
+        <div style="display:flex;gap:9px;margin-top:18px;flex-wrap:wrap">
+          <button onClick="{{ confirmYes }}" style="background:{{ confirmBtnBg }};color:#fff;border-radius:980px;padding:11px 18px;font-size:14px;font-weight:600;flex:1;min-width:120px">{{ confirmLabel }}</button>
+          <button onClick="{{ confirmNo }}" style="background:#F0F0F3;color:#1D1D1F;border-radius:980px;padding:11px 18px;font-size:14px;font-weight:600;flex:1;min-width:120px" style-hover="background:#E6E6EA">Odustani</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;demoSpeed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:2,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0.5,&quot;max&quot;:3,&quot;step&quot;:0.5,&quot;unit&quot;:&quot;×&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+const TR = [
+  { sp: 'dr. Begić', d: true, t: 'Dobar dan, Amina. Sjedite. Recite mi šta vas dovodi danas.' },
+  { sp: 'Amina H.', d: false, t: 'Kašljem već pet dana. Suh kašalj, najgori mi je noću.' },
+  { sp: 'Amina H.', d: false, t: 'Sinoć sam imala i temperaturu, mjerila sam 38 i po.' },
+  { sp: 'dr. Begić', d: true, t: 'Imate li bolove u grudima ili nedostatak zraka?' },
+  { sp: 'Nepoznat govornik', d: false, unk: true, t: 'Bola nema. Zadišem se kad se penjem stepenicama, prije toga nisam.' },
+  { sp: 'dr. Begić', d: true, t: 'Uzimate li nešto od lijekova? I znate li za neku alergiju?' },
+  { sp: 'Amina H.', d: false, t: 'Paracetamol po potrebi. Na penicilin sam alergična, kao dijete sam dobila osip.' },
+  { sp: 'dr. Begić', d: true, t: 'U redu, to ćemo zapisati. Sad ću izmjeriti temperaturu i saturaciju, pa ću vas poslušati.' },
+  { sp: 'dr. Begić', d: true, t: 'Temperatura 37,8. Saturacija 97 posto. Puls 88.' },
+  { sp: 'dr. Begić', d: true, t: 'Auskultatorno: oslabljen šum desno bazalno, pukota nema.' },
+  { sp: 'dr. Begić', d: true, t: 'Grlo je blago crveno, limfni čvorovi nisu uvećani.' },
+  { sp: 'dr. Begić', d: true, t: 'Najvjerovatnije je virusna infekcija, ali zbog nalaza desno bazalno tražit ćemo snimak pluća.' },
+  { sp: 'dr. Begić', d: true, low: true, t: 'Nastavite paracetamol i puno tekućine. Ako zatreba antibiotik, zbog alergije idemo na azitromicin.' },
+  { sp: 'Amina H.', d: false, t: 'Kad da se vratim?' },
+  { sp: 'dr. Begić', d: true, t: 'Kontrola za tri dana, ili ranije ako se pogorša. Snimak napravite danas.' }
+];
+
+const SOAP = [
+  { label: 'Subjektivno', items: [
+    { a: 1, t: 'Uporan suh kašalj u trajanju od pet dana, izraženiji noću.' },
+    { a: 2, t: 'Subjektivna febrilnost do 38,5 °C prethodne noći.' },
+    { a: 4, t: 'Bez bola u grudima. Dispneja pri naporu, novonastala.' },
+    { a: 6, t: 'Terapija kod kuće: paracetamol po potrebi. Alergija na penicilin (osip u djetinjstvu).' }
+  ]},
+  { label: 'Objektivno', items: [
+    { a: 8, t: 'T 37,8 °C · SpO₂ 97 % · puls 88/min.' },
+    { a: 9, t: 'Auskultatorno oslabljen šum desno bazalno, bez pukota.' },
+    { a: 10, t: 'Farinks blago hiperemičan, limfni čvorovi neuvećani.' }
+  ]},
+  { label: 'Procjena', interp: true, items: [] },
+  { label: 'Plan', items: [
+    { a: 11, t: 'Rtg pluća danas.' },
+    { a: 12, t: 'Paracetamol 500 mg po potrebi, obilna hidracija.' },
+    { a: 12, t: 'U slučaju bakterijske superinfekcije azitromicin — penicilin kontraindiciran.' },
+    { a: 14, t: 'Kontrola za tri dana ili prije u slučaju pogoršanja.' }
+  ]}
+];
+
+const FLAGS = [
+  { a: 6, kind: 'Alergija izgovorena u razgovoru', text: 'Penicilin — osip u djetinjstvu. Potvrdite prije unosa u karton.', dot: '#E0642A' },
+  { a: 8, kind: 'Vitalni znaci prepisani iz govora', text: 'T 37,8 °C · SpO₂ 97 % · puls 88/min — provjerite uz mjerač.', dot: '#0071E3' },
+  { a: 12, kind: 'Niska pouzdanost prepoznavanja', text: '„azitromicin” · 92 % — potvrdite naziv lijeka u konačnom transkriptu.', dot: '#C77700' },
+  { a: 4, kind: 'Govornik nije prepoznat', text: 'Jedan segment nema govornika. Označite ga ručno prije odobrenja.', dot: '#8A5B00' }
+];
+
+const CONSENT = [
+  { title: 'Snimanje razgovora', body: 'Pacijent je obaviješten da se razgovor sluša radi pripreme nalaza.' },
+  { title: 'Način obrade', body: 'Pacijentu je rečeno da li zvuk ostaje na uređaju ili ide vanjskom obrađivaču.' },
+  { title: 'Transkript i pravo na brisanje', body: 'Transkript ostaje u memoriji sesije. Pacijent može zatražiti brisanje odmah.' }
+];
+
+const VISITS = [
+  { time: '09:00', name: 'Mirza Selimović', reason: 'Kontrola hipertenzije', status: 'Potpisano' },
+  { time: '09:30', name: 'Lejla Kovač', reason: 'Bol u donjem dijelu leđa', status: 'Nacrt', draft: true },
+  { time: '10:15', name: 'Amina Hodžić', reason: 'Uporan kašalj i temperatura', status: 'Na čekanju', now: true },
+  { time: '10:45', name: 'Vedad Đulić', reason: 'Rezultati laboratorije', status: 'Zakazano' },
+  { time: '11:15', name: 'Senka Pašić', reason: 'Prva posjeta · migrene', status: 'Zakazano' },
+  { time: '11:45', name: 'Damir Alagić', reason: 'Obnova recepta', status: 'Zakazano' }
+];
+
+const CHIP = {
+  'Potpisano': ['#F0F7F1', '#1F7A36'],
+  'Nacrt': ['#FCF3E3', '#9A5B00'],
+  'Na čekanju': ['#E9F2FE', '#0058B9'],
+  'Zakazano': ['#F2F2F4', '#6E6E73'],
+  'Zaključano': ['#F0F7F1', '#1F7A36']
+};
+
+const DEPTS = ['Porodična medicina', 'Interna medicina', 'Pedijatrija', 'Radiologija'];
+const PROFILES = ['MAI Transcribe 2', 'Whisper Large v3'];
+const MICS = ['Ugrađeni mikrofon', 'USB mikrofon ordinacije', 'Slušalice s mikrofonom'];
+
+const PHASES = {
+  boundary: 'Završavam izjavu…',
+  provisional: 'Privremeni transkript',
+  quality: 'Provjera kvaliteta',
+  final: 'Konačni transkript',
+  draft: 'Pripremam lokalni nacrt'
+};
+
+const ERRORS = {
+  approval: { title: 'Vanjska obrada nije potvrđena', text: 'Za slanje izjave vanjskom obrađivaču potrebna je vaša potvrda na ekranu sesije. Snimanje nije pokrenuto.', local: true },
+  payment: { title: 'Vanjska transkripcija nije dostupna', text: 'Obrađivač je odbio zahtjev zbog nedostatka kredita. Nijedan zvuk nije poslan. Lokalna obrada je dostupna.', local: true },
+  eu: { title: 'Klinička ruta u EU nije dostupna', text: 'Konfiguracija za obradu kliničkih podataka u EU trenutno nije aktivna, pa je vanjska obrada blokirana. Lokalna obrada je dostupna.', local: true },
+  thermal: { title: 'Lokalna transkripcija zaustavljena', text: 'Obrada je prekinuta da se uređaj ohladi. Ponovni pokušaj nije automatski — pokrenite ga sami kad temperatura padne.' },
+  network: { title: 'Veza s obrađivačem prekinuta', text: 'Zahtjev nije uspio. Zvuk nije automatski ponovno poslan, a ručno upisani tekst je sačuvan u memoriji sesije.' },
+  mic: { title: 'Mikrofon ili format nisu podržani', text: 'Potreban je mono zapis 16 kHz. Odaberite drugi ulazni uređaj u postavkama ili promijenite pretraživač.' }
+};
+
+const GOVERNANCE = [
+  { t: 'Osnov obrade i odobrenje ustanove postoje prije prve vanjske izjave.' },
+  { t: 'Ugovor o obradi podataka i EU ruta potvrđeni za odabrani profil.' },
+  { t: 'Zvuk, transkript i nacrt se ne upisuju u pohranu pretraživača, zapise konzole ni adresu stranice.' },
+  { t: 'Pacijent je obaviješten o načinu obrade i pravu na brisanje.' },
+  { t: 'Nalaz ulazi u karton samo nakon provjere i potpisa ljekara.' }
+];
+
+const initials = (n) => n.split(' ').map(w => w[0]).join('');
+const accIni = (n) => n.replace(/^dr\.\s*/, '').split(' ').map(w => w[0]).join('');
+const mmss = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+const genNote = () => SOAP.map(sec => sec.items.map(i => i.t).join(' '));
+
+class Component extends DCLogic {
+  state = {
+    screen: 'signin', dept: 'Porodična medicina', activeAcc: 0, accountMenuOpen: false, deptPickerOpen: false,
+    accounts: [
+      { name: 'dr. Emir Begić', dept: 'Porodična medicina', depts: ['Porodična medicina'] },
+      { name: 'dr. Amina Selimović', dept: 'Interna medicina', depts: ['Interna medicina'] }
+    ],
+    remember: true,
+    consent: [false, false, false],
+    mode: 'local', cloudProfile: PROFILES[0], cloudApproved: false, cloudBlocked: null,
+    mic: MICS[0], thermal: 'normalno',
+    idx: -1, running: false, phase: null, finished: false, provisional: '',
+    segOverride: {}, speakerFixed: {}, segEdit: null, segDraft: '',
+    manualOpen: false, manualText: '',
+    note: null, noteTouched: {}, noteStale: false, copied: false, jump: null,
+    approved: false, sel: 0,
+    settingsOpen: false, privacyOpen: false, confirm: null, errKey: null
+  };
+  scrollRef = React.createRef();
+  timers = [];
+
+  componentWillUnmount() { this.clearTimers(); }
+
+  componentDidUpdate() {
+    const el = this.scrollRef.current;
+    if (el && this.state.screen === 'visit') el.scrollTop = el.scrollHeight;
+  }
+
+  clearTimers() {
+    clearInterval(this.tick);
+    this.timers.forEach(clearTimeout);
+    this.timers = [];
+  }
+
+  later(fn, ms) {
+    const sp = this.props.demoSpeed ?? 1;
+    this.timers.push(setTimeout(fn, ms / sp));
+  }
+
+  go = (screen) => () => this.setState({ screen, accountMenuOpen: false });
+
+  componentDidMount() {
+    try {
+      const raw = window.localStorage.getItem('mediscribe.accounts.depts');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        this.setState(st => ({
+          accounts: st.accounts.map(a => saved[a.name]
+            ? Object.assign({}, a, { dept: saved[a.name].dept || a.dept, depts: saved[a.name].depts || a.depts })
+            : a)
+        }));
+      }
+    } catch (e) { /* pohrana nije dostupna */ }
+  }
+
+  saveDepts(accounts) {
+    try {
+      const map = {};
+      accounts.forEach(a => { map[a.name] = { dept: a.dept, depts: a.depts }; });
+      window.localStorage.setItem('mediscribe.accounts.depts', JSON.stringify(map));
+    } catch (e) { /* pohrana nije dostupna */ }
+  }
+
+  pickDept = (d, add) => {
+    this.setState(st => {
+      const accounts = st.accounts.map((a, i) => {
+        if (i !== st.activeAcc) return a;
+        const list = a.depts || [a.dept];
+        return Object.assign({}, a, { dept: d, depts: list.indexOf(d) === -1 ? list.concat([d]) : list });
+      });
+      this.saveDepts(accounts);
+      return { accounts, dept: d, deptPickerOpen: add ? false : st.deptPickerOpen };
+    });
+  };
+
+  start = () => {
+    this.clearTimers();
+    if (this.state.mode === 'cloud' && this.state.cloudBlocked) {
+      this.setState({ errKey: this.state.cloudBlocked });
+      return;
+    }
+    this.setState({ screen: 'visit', idx: 0, running: true, finished: false, phase: 'provisional', provisional: '', note: null, noteStale: false, segOverride: {}, errKey: null });
+    const step = 1500 / (this.props.demoSpeed ?? 1);
+    this.tick = setInterval(() => {
+      const s = this.state;
+      if (!s.running) return;
+      const next = s.idx + 1;
+      if (next >= TR.length) { clearInterval(this.tick); this.finish(); return; }
+      const upcoming = TR[next + 1];
+      this.setState({ idx: next, provisional: upcoming ? upcoming.t.slice(0, 34) + '…' : '' });
+    }, step);
+  };
+
+  finish = () => {
+    if (this.state.phase === 'boundary' || this.state.finished) return;
+    this.clearTimers();
+    this.setState({ running: false, phase: 'boundary', provisional: '', idx: TR.length - 1 });
+    this.later(() => this.setState({ phase: 'quality' }), 700);
+    this.later(() => this.setState({ phase: 'final' }), 1500);
+    this.later(() => this.setState({ phase: 'draft' }), 2300);
+    this.later(() => this.setState({ phase: null, finished: true, note: genNote() }), 3200);
+  };
+
+  clearSession = () => {
+    this.clearTimers();
+    this.setState({
+      screen: 'today', consent: [false, false, false], idx: -1, running: false, phase: null, finished: false,
+      provisional: '', segOverride: {}, speakerFixed: {}, segEdit: null, manualOpen: false, manualText: '',
+      note: null, noteTouched: {}, noteStale: false, approved: false, cloudApproved: false,
+      settingsOpen: false, confirm: null, errKey: null
+    });
+  };
+
+  ask = (c) => () => this.setState({ confirm: c, accountMenuOpen: false, settingsOpen: false });
+
+  fireError = (key) => () => {
+    this.clearTimers();
+    const blocking = key === 'payment' || key === 'eu';
+    this.setState(s => ({
+      errKey: key, settingsOpen: false, running: false,
+      phase: null,
+      cloudBlocked: blocking ? key : s.cloudBlocked,
+      mode: blocking && s.mode === 'cloud' ? 'cloud' : s.mode,
+      thermal: key === 'thermal' ? 'potrebno hlađenje' : s.thermal
+    }));
+  };
+
+  renderVals() {
+    const s = this.state;
+    const active = s.accounts[s.activeAcc] || s.accounts[0];
+    const consentDone = s.consent.every(Boolean);
+    const cloud = s.mode === 'cloud';
+    const cloudRoute = s.cloudProfile === PROFILES[0] ? 'EU ruta u regionu' : 'standardna OpenRouter ruta';
+    const captureBusy = s.running || !!s.phase;
+    const shown = s.finished ? TR.length - 1 : s.idx;
+    const err = s.errKey ? ERRORS[s.errKey] : null;
+
+    const seg = (i) => (s.segOverride[i] !== undefined ? s.segOverride[i] : TR[i].t);
+    const speakerOf = (i) => (s.speakerFixed[i] ? 'Amina H.' : TR[i].sp);
+
+    const note = s.note || genNote();
+    const noteReady = s.finished;
+
+    const soapLive = SOAP.map(sec => {
+      const items = sec.items.filter(it => it.a <= s.idx || s.finished);
+      return { label: sec.label, items, empty: items.length === 0 };
+    });
+    const filled = soapLive.reduce((n, x) => n + x.items.length, 0);
+    const total = SOAP.reduce((n, x) => n + x.items.length, 0);
+
+    const flags = (s.finished ? FLAGS : FLAGS.filter(f => f.a <= s.idx))
+      .filter(f => !(f.a === 4 && s.speakerFixed[4]));
+
+    const statusMap = err
+      ? { label: 'Greška', bg: '#FDF3F1', border: '#F6D9D3', fg: '#8E1F14', dot: '#C0281A' }
+      : s.phase
+        ? { label: 'Obrada u toku', bg: '#FCF3E3', border: '#EEDFC2', fg: '#8A5B00', dot: '#C77700' }
+        : cloud
+          ? { label: 'Vanjska obrada', bg: '#E9F2FE', border: '#CFE2FA', fg: '#0058B9', dot: '#0071E3' }
+          : { label: 'Lokalno', bg: '#F0F7F1', border: '#D6EBD9', fg: '#1F7A36', dot: '#30B050' };
+
+    const meterActive = s.running;
+    const meterBars = [0.4, 0.85, 0.6, 1, 0.5, 0.75].map((h, i) => ({
+      scale: meterActive ? 1 : h * 0.4,
+      color: meterActive ? '#0071E3' : '#DEDEE3',
+      anim: meterActive ? 'zbar ' + (620 + i * 90) + 'ms ease-in-out infinite' : 'none'
+    }));
+
+    const modeOptions = [
+      {
+        key: 'local', title: 'Lokalna transkripcija',
+        body: 'Koristi lokalni streaming model kad je instaliran. Zvuk ostaje na ovom računaru.',
+        reason: s.thermal === 'potrebno hlađenje' ? 'Uređaj se hladi — lokalna obrada je privremeno usporena.' : ''
+      },
+      {
+        key: 'cloud', title: 'Vanjska transkripcija (MAI / Whisper)',
+        body: 'Šalje samo završene izjave na profil ' + s.cloudProfile + ' (' + cloudRoute + ').',
+        reason: s.cloudBlocked ? ERRORS[s.cloudBlocked].title + ' — ' + ERRORS[s.cloudBlocked].text : ''
+      }
+    ].map(m => {
+      const on = s.mode === m.key;
+      const blocked = m.key === 'cloud' && !!s.cloudBlocked;
+      return {
+        title: m.title, body: m.body, reason: m.reason,
+        disabled: blocked, settingsDisabled: blocked || captureBusy,
+        opacity: blocked ? 0.55 : 1, settingsOpacity: blocked || captureBusy ? 0.55 : 1,
+        bg: on ? '#F5F8FD' : '#FBFBFC', border: on ? '#C9DEF8' : '#E9E9EC',
+        ring: on ? '#0071E3' : '#D2D2D7', fill: on ? '#0071E3' : 'transparent',
+        pick: () => this.setState({ mode: m.key, cloudApproved: false })
+      };
+    });
+
+    const segments = TR.slice(0, shown + 1).map((l, i) => {
+      const editing = s.segEdit === i;
+      return {
+        sp: speakerOf(i), t: seg(i),
+        color: l.d ? '#0058B9' : '#8A5A2B',
+        span: mmss(i * 14) + ' – ' + mmss(i * 14 + 13),
+        warn: l.low ? 'Niska pouzdanost · 92 %' : (l.unk && !s.speakerFixed[i] ? 'Govornik nije prepoznat' : ''),
+        unknown: !!l.unk && !s.speakerFixed[i],
+        edited: s.segOverride[i] !== undefined,
+        editing, reading: !editing,
+        bg: s.jump === i ? '#F5F8FD' : 'transparent',
+        edit: () => this.setState({ segEdit: i, segDraft: seg(i) }),
+        fixSpeaker: () => this.setState(st => ({ speakerFixed: Object.assign({}, st.speakerFixed, { [i]: true }) }))
+      };
+    });
+
+    const noteFields = SOAP.map((sec, i) => {
+      const evidence = sec.items.map(it => it.a).filter((v, k, arr) => arr.indexOf(v) === k)
+        .map(a => ({ label: 'Replika ' + (a + 1), jump: () => this.setState({ jump: a }) }));
+      return {
+        label: sec.label,
+        text: note[i] || '',
+        rows: sec.interp ? 3 : 4,
+        placeholder: sec.interp ? 'npr. Akutna infekcija gornjih dišnih puteva — potvrditi radiografijom' : 'Nacrt je prazan — upišite sadržaj',
+        touched: !!s.noteTouched[i],
+        border: s.approved ? '#E9E9EC' : '#D2D2D7',
+        bg: s.approved ? '#FAFAFC' : '#FFFFFF',
+        evidence, hasEvidence: evidence.length > 0, noEvidence: evidence.length === 0,
+        note: sec.interp ? 'Procjena nije izrečena u razgovoru. Lokalni nacrt je ostavio polje prazno umjesto da pretpostavi dijagnozu — upišite procjenu ili je označite kao neodređenu.' : '',
+        onInput: (e) => {
+          const v = e.target.value;
+          this.setState(st => {
+            const next = (st.note || genNote()).slice();
+            next[i] = v;
+            return { note: next, noteTouched: Object.assign({}, st.noteTouched, { [i]: true }) };
+          });
+        }
+      };
+    });
+
+    const visits = VISITS.map(v => {
+      const status = v.now && s.approved ? 'Potpisano' : v.status;
+      const c = CHIP[status] || CHIP['Zakazano'];
+      return {
+        time: v.time, name: v.name, reason: v.reason, status, initials: initials(v.name),
+        chipBg: c[0], chipFg: c[1],
+        actionable: !!(v.now || v.draft),
+        actionLabel: v.now ? (s.approved ? 'Otvori' : 'Započni') : 'Pregledaj',
+        action: v.now ? (s.approved ? this.go('reports') : this.go('consent')) : this.go('review')
+      };
+    });
+
+    const reports = [
+      { name: 'Amina Hodžić', kind: s.approved ? 'Posjeta · potpisano' : 'Posjeta · nacrt', date: '12.09.2026.', version: s.approved ? 'v2' : 'v1', status: s.approved ? 'Zaključano' : 'Nacrt' },
+      { name: 'Mirza Selimović', kind: 'Kontrola hipertenzije', date: '12.09.2026.', version: 'v1', status: 'Potpisano' },
+      { name: 'Lejla Kovač', kind: 'Bol u leđima', date: '12.09.2026.', version: 'v3', status: 'Nacrt' },
+      { name: 'Nedim Karić', kind: 'Posjeta · potpisano', date: '11.09.2026.', version: 'v1', status: 'Potpisano' },
+      { name: 'Ivana Marić', kind: 'Prva posjeta', date: '11.09.2026.', version: 'v2', status: 'Potpisano' }
+    ].map((r, i) => {
+      const c = CHIP[r.status];
+      return Object.assign({}, r, { chipBg: c[0], chipFg: c[1], bg: i === s.sel ? '#F5F8FD' : '#fff', select: () => this.setState({ sel: i }) });
+    });
+
+    const HIST = [
+      [
+        s.approved
+          ? { title: 'v2 · potpisano', at: '10:41', text: active.name + ' je odobrio nalaz. Zapis zaključan.', dot: '#1F7A36' }
+          : { title: 'v1 · nacrt', at: '10:34', text: 'Nacrt čeka provjeru ljekara.', dot: '#C77700' },
+        { title: 'Konačni transkript', at: '10:33', text: 'Jedna izjava, 15 segmenata. Privremeni tekst zamijenjen konačnim.', dot: '#0071E3' },
+        { title: 'Sesija otvorena', at: '10:15', text: 'Saglasnost potvrđena · ' + (cloud ? 'vanjska obrada' : 'lokalna obrada'), dot: '#C2C2C7' }
+      ],
+      [
+        { title: 'v1 · potpisano', at: '09:22', text: 'Bez izmjena nakon nacrta.', dot: '#1F7A36' },
+        { title: 'v1 · nacrt kreiran', at: '09:04', text: 'Lokalna obrada, 11 segmenata.', dot: '#C2C2C7' }
+      ],
+      [
+        { title: 'v3 · nacrt', at: '09:58', text: 'Plan dopunjen fizikalnom terapijom.', dot: '#C77700' },
+        { title: 'v2 · izmjena transkripta', at: '09:47', text: 'Ispravljena strana bola; nacrt označen zastarjelim i pripremljen ponovo.', dot: '#0071E3' },
+        { title: 'v1 · nacrt kreiran', at: '09:33', text: 'Lokalna obrada, 19 segmenata.', dot: '#C2C2C7' }
+      ],
+      [
+        { title: 'v1 · potpisano', at: '11.09. 16:12', text: 'Pregledano i potpisano isti dan.', dot: '#1F7A36' },
+        { title: 'v1 · nacrt kreiran', at: '11.09. 15:50', text: 'Lokalna obrada, 9 segmenata.', dot: '#C2C2C7' }
+      ],
+      [
+        { title: 'v2 · potpisano', at: '11.09. 10:40', text: 'Dopunjena porodična anamneza.', dot: '#1F7A36' },
+        { title: 'v1 · nacrt kreiran', at: '11.09. 10:12', text: 'Lokalna obrada, 22 segmenta.', dot: '#C2C2C7' }
+      ]
+    ];
+
+    const lowConf = TR.slice(0, shown + 1).some(l => l.low) || (!s.speakerFixed[4] && shown >= 4);
+
+    return {
+      isSignin: s.screen === 'signin', isApp: s.screen !== 'signin',
+      isToday: s.screen === 'today', isConsent: s.screen === 'consent', isVisit: s.screen === 'visit',
+      isReview: s.screen === 'review', isReports: s.screen === 'reports',
+      signIn: this.go('today'), goToday: this.go('today'), goVisit: this.go('visit'),
+      goReview: this.go('review'), goReports: this.go('reports'),
+      showBack: s.screen !== 'today' && s.screen !== 'reports',
+      goBack: this.go('today'),
+      tabs: [
+        { label: 'Danas', go: this.go('today'), count: '', live: false, bg: s.screen === 'today' ? '#1D1D1F' : '#fff', fg: s.screen === 'today' ? '#fff' : '#1D1D1F', border: s.screen === 'today' ? '#1D1D1F' : '#E3E3E7' },
+        { label: 'Izvještaji', go: this.go('reports'), count: '', live: false, bg: s.screen === 'reports' ? '#1D1D1F' : '#fff', fg: s.screen === 'reports' ? '#fff' : '#1D1D1F', border: s.screen === 'reports' ? '#1D1D1F' : '#E3E3E7' }
+      ].concat(s.idx >= 0 && !s.approved ? [{
+        label: s.finished ? 'Sesija · na pregledu' : 'Sesija u toku',
+        go: this.go(s.finished ? 'review' : 'visit'), count: '', live: s.running,
+        bg: (s.screen === 'visit' || s.screen === 'review') ? '#1D1D1F' : '#fff',
+        fg: (s.screen === 'visit' || s.screen === 'review') ? '#fff' : '#1D1D1F',
+        border: (s.screen === 'visit' || s.screen === 'review') ? '#1D1D1F' : '#E3E3E7'
+      }] : []),
+
+      statusLabel: statusMap.label, statusBg: statusMap.bg, statusBorder: statusMap.border, statusFg: statusMap.fg, statusDot: statusMap.dot,
+      hasDrafts: true,
+      draftsTitle: (s.approved ? 2 : 3) + ' nacrta čeka provjeru',
+      modeShort: cloud ? 'Vanjska · ' + s.cloudProfile : 'Lokalno na uređaju',
+      railNote: cloud
+        ? 'Vanjska obrada: ' + s.cloudProfile + '. Šalju se samo završene izjave.'
+        : 'Lokalna obrada: zvuk ostaje na ovom računaru i ne pohranjuje se.',
+
+      errorActive: !!err, errorTitle: err ? err.title : '', errorText: err ? err.text : '',
+      errorOffersLocal: !!(err && err.local && cloud),
+      switchToLocal: () => this.setState({ mode: 'local', errKey: null }),
+      retryError: () => this.setState({ errKey: null }),
+      dismissError: () => this.setState({ errKey: null }),
+
+      openSettings: () => this.setState({ settingsOpen: true, privacyOpen: false, accountMenuOpen: false }),
+      openPrivacy: () => this.setState({ privacyOpen: true, settingsOpen: false, accountMenuOpen: false }),
+      closeModals: () => this.setState({ settingsOpen: false, privacyOpen: false }),
+      settingsOpen: s.settingsOpen, privacyOpen: s.privacyOpen, governance: GOVERNANCE,
+      settingsLocked: captureBusy ? 'Način i profil se ne mogu mijenjati dok snimanje ili obrada traje. Izmjene se primjenjuju na novu izjavu.' : '',
+      routeSummary: cloud
+        ? 'Završene izjave idu na ' + s.cloudProfile + ' · ' + cloudRoute + '. Djelimičan zvuk se ne šalje.'
+        : 'Zvuk ostaje na ovom računaru. Ništa se ne šalje van ordinacije.',
+      thermalText: s.thermal,
+      profileOptions: PROFILES.map(p => ({
+        name: p, disabled: captureBusy, opacity: captureBusy ? 0.55 : 1,
+        bg: s.cloudProfile === p ? '#0071E3' : '#fff',
+        fg: s.cloudProfile === p ? '#fff' : '#1D1D1F',
+        border: s.cloudProfile === p ? '#0071E3' : '#D9D9DE',
+        pick: () => this.setState({ cloudProfile: p, cloudApproved: false })
+      })),
+      mics: MICS.map(m => ({ v: m })), mic: s.mic, captureBusy,
+      onMicChange: (e) => this.setState({ mic: e.target.value }),
+      errorSims: [
+        { key: 'approval', label: 'Nema odobrenja' }, { key: 'payment', label: 'Naplata odbijena' },
+        { key: 'eu', label: 'EU ruta blokirana' }, { key: 'thermal', label: 'Toplinska zaštita' },
+        { key: 'network', label: 'Prekid veze' }, { key: 'mic', label: 'Mikrofon nije podržan' }
+      ].map(e => ({ label: e.label, fire: this.fireError(e.key) })),
+
+      deptOptions: (active.depts || [active.dept]).map(d => ({
+        name: d,
+        bg: d === active.dept ? '#0071E3' : '#fff',
+        fg: d === active.dept ? '#fff' : '#1D1D1F',
+        border: d === active.dept ? '#0071E3' : '#D9D9DE',
+        pick: () => this.pickDept(d)
+      })),
+      pwType: s.pwVisible ? 'text' : 'password',
+      pwHidden: !s.pwVisible, pwShown: !!s.pwVisible,
+      pwLabel: s.pwVisible ? 'Sakrij lozinku' : 'Prikaži lozinku',
+      togglePw: () => this.setState(st => ({ pwVisible: !st.pwVisible })),
+      rulesOpen: !!s.rulesOpen,
+      rulesArrow: s.rulesOpen ? 'rotate(180deg)' : 'none',
+      toggleRules: () => this.setState(st => ({ rulesOpen: !st.rulesOpen })),
+      toggleRemember: () => this.setState(st => ({ remember: !st.remember })),
+      rememberMark: s.remember ? '✓' : '',
+      rememberBg: s.remember ? '#0071E3' : '#fff',
+      rememberBorder: s.remember ? '#0071E3' : '#D2D2D7',
+      deptSavedNote: (active.depts || []).length > 1 ? 'Sačuvani odjeli — odaberite za ovu smjenu' : 'Sačuvano s prijašnje prijave',
+      canAddDept: DEPTS.some(d => (active.depts || []).indexOf(d) === -1),
+      deptPickerOpen: s.deptPickerOpen,
+      deptPickerBg: s.deptPickerOpen ? '#F1F7FE' : '#fff',
+      toggleDeptPicker: () => this.setState(st => ({ deptPickerOpen: !st.deptPickerOpen })),
+      addableDepts: DEPTS.filter(d => (active.depts || []).indexOf(d) === -1).map(d => ({
+        name: d, add: () => this.pickDept(d, true)
+      })),
+      accountMenuOpen: s.accountMenuOpen,
+      accountRowBg: s.accountMenuOpen ? '#F0F0F3' : '#fff',
+      toggleAccountMenu: () => this.setState(st => ({ accountMenuOpen: !st.accountMenuOpen })),
+      activeName: active.name, activeDept: active.dept, activeIni: accIni(active.name),
+      activeShort: active.name.replace(/^dr\.\s*/, 'dr. '),
+      accounts: s.accounts.map((a, i) => ({
+        name: a.name, dept: a.dept, ini: accIni(a.name),
+        mark: i === s.activeAcc ? '✓' : '',
+        bg: i === s.activeAcc ? '#F5F8FD' : 'transparent',
+        avBg: i === s.activeAcc ? '#D9E7FA' : '#F0F0F3',
+        avFg: i === s.activeAcc ? '#0058B9' : '#6E6E73',
+        pick: () => this.setState({ activeAcc: i, dept: a.dept, accountMenuOpen: false })
+      })),
+      addAccount: () => this.setState({ accountMenuOpen: false, screen: 'signin' }),
+      askLogOut: this.ask({ title: 'Odjaviti se?', body: 'Trenutna sesija i nacrt se brišu iz memorije. Ova radnja se ne može vratiti.', label: 'Odjavi se', danger: true, action: 'logout' }),
+
+      consentItems: CONSENT.map((c, i) => ({
+        title: c.title, body: c.body, mark: s.consent[i] ? '✓' : '',
+        bg: s.consent[i] ? '#F5F8FD' : '#FBFBFC',
+        border: s.consent[i] ? '#C9DEF8' : '#E9E9EC',
+        dotBg: s.consent[i] ? '#0071E3' : '#fff',
+        dotBorder: s.consent[i] ? '#0071E3' : '#D2D2D7',
+        toggle: () => this.setState(st => { const n = st.consent.slice(); n[i] = !n[i]; return { consent: n }; })
+      })),
+      consentProgress: s.consent.filter(Boolean).length + ' od 3 potvrđeno',
+      modeOptions, cloudChosen: cloud, cloudProfile: s.cloudProfile, cloudRoute,
+      toggleCloudApproval: () => this.setState(st => ({ cloudApproved: !st.cloudApproved })),
+      approvalMark: s.cloudApproved ? '✓' : '',
+      approvalBoxBg: s.cloudApproved ? '#0071E3' : '#fff',
+      approvalBoxBorder: s.cloudApproved ? '#0071E3' : '#D2D2D7',
+      startVisit: this.start,
+      startBlocked: !consentDone || (cloud && (!s.cloudApproved || !!s.cloudBlocked)),
+      startBtnBg: (!consentDone || (cloud && (!s.cloudApproved || !!s.cloudBlocked))) ? '#C7C7CC' : '#0071E3',
+      startHint: !consentDone
+        ? 'Potvrdite sve tri stavke saglasnosti.'
+        : (cloud && s.cloudBlocked ? 'Vanjska obrada je blokirana — prebacite se na lokalnu.' :
+          (cloud && !s.cloudApproved ? 'Označite potvrdu za vanjsku obradu.' :
+            (cloud ? 'Mikrofon se aktivira nakon pokretanja. Prima: ' + s.cloudProfile + '.' : 'Mikrofon se aktivira nakon pokretanja. Obrada ostaje na uređaju.'))),
+
+      clock: mmss(Math.max(0, (shown + 1) * 14)),
+      recLabel: s.running ? 'Snima se' : (s.phase ? PHASES[s.phase] : (s.finished ? 'Izjava završena' : 'Spremno')),
+      recDot: s.running ? '#E0301A' : (s.phase ? '#C77700' : '#C7C7CC'),
+      recAnim: s.running ? 'zpulse 1.2s infinite' : 'none',
+      phaseLabel: s.phase ? PHASES[s.phase] : '',
+      meterBars, meterText: s.running ? 'Nivo zvuka: dobar' : 'Nivo zvuka: nema signala',
+      finishUtterance: this.finish,
+      finishBlocked: !s.running,
+      finishBtnBg: s.running ? '#1D1D1F' : '#C7C7CC',
+      reviewBlocked: !s.finished,
+      reviewBtnBg: s.finished ? '#0071E3' : '#F7F7F9',
+      reviewBtnFg: s.finished ? '#fff' : '#B0B0B5',
+      reviewBtnBorder: s.finished ? '#0071E3' : '#E9E9EC',
+      captureNotice: cloud
+        ? 'Vanjska obrada: zvuk završene izjave ide na ' + s.cloudProfile + ' (' + cloudRoute + '). Nema pohrane snimka.'
+        : 'Lokalna obrada: zvuk ostaje u baferu od 3 s i ne pohranjuje se. Mikrofon: ' + s.mic + '.',
+      lines: TR.slice(0, shown + 1).map((l, i) => ({
+        sp: speakerOf(i), t: seg(i), color: l.d ? '#0058B9' : '#8A5A2B', at: mmss(i * 14),
+        warn: l.low ? 'Niska pouzdanost' : (l.unk && !s.speakerFixed[i] ? 'Govornik nije prepoznat' : '')
+      })),
+      lineCount: (shown + 1) + ' od ' + TR.length + ' segmenata',
+      provisional: s.provisional,
+      idleNotice: s.idx < 0 ? 'Mikrofon je aktivan. Transkript se pojavljuje kako razgovor teče.' : '',
+      soap: soapLive, progress: Math.round(filled / total * 100) + '%',
+      flags, noFlags: flags.length === 0,
+
+      segments, segDraft: s.segDraft,
+      onSegInput: (e) => this.setState({ segDraft: e.target.value }),
+      saveSeg: () => this.setState(st => ({
+        segOverride: Object.assign({}, st.segOverride, { [st.segEdit]: st.segDraft }),
+        segEdit: null, noteStale: true
+      })),
+      cancelSeg: () => this.setState({ segEdit: null, segDraft: '' }),
+      confidenceWarning: lowConf ? 'Jedan ili više segmenata ima nisku pouzdanost ili nepoznatog govornika. Provjerite ih prije odobrenja nalaza.' : '',
+      manualOpen: s.manualOpen, manualText: s.manualText,
+      manualLabel: s.manualOpen ? 'Sakrij ručni tekst' : 'Dodaj ručni tekst',
+      toggleManual: () => this.setState(st => ({ manualOpen: !st.manualOpen })),
+      onManualInput: (e) => this.setState({ manualText: e.target.value }),
+      askRepeat: this.ask({ title: 'Ponoviti ovu izjavu?', body: 'Konačni transkript ove izjave se odbacuje i snimanje počinje ispočetka. Zvuk se ne šalje ponovo automatski.', label: 'Ponovi izjavu', danger: false, action: 'repeat' }),
+      askClearSession: this.ask({ title: 'Obrisati trenutnu sesiju?', body: 'Transkript, nacrt i stanje snimanja brišu se iz memorije. Ova radnja se ne može vratiti.', label: 'Obriši sesiju', danger: true, action: 'clear' }),
+
+      noteFields, noteStale: s.noteStale && noteReady,
+      noteChip: s.approved ? 'Potpisano · v2' : (noteReady ? 'Nacrt · nije zapis' : 'Čeka konačni transkript'),
+      noteChipBg: s.approved ? '#F0F7F1' : '#FCF3E3',
+      noteChipFg: s.approved ? '#1F7A36' : '#9A5B00',
+      noteMeta: noteReady ? 'Pripremljeno lokalno iz konačnog transkripta · 15 segmenata' : 'Nacrt nastaje nakon konačnog transkripta',
+      regenerate: () => this.setState({ note: genNote(), noteTouched: {}, noteStale: false }),
+      copyDraft: () => {
+        this.setState({ copied: true });
+        this.later(() => this.setState({ copied: false }), 1800);
+      },
+      copyLabel: s.copied ? 'Kopirano' : 'Kopiraj nacrt',
+      approved: s.approved, notApproved: !s.approved,
+      askApprove: this.ask({ title: 'Odobriti i potpisati nalaz?', body: 'Potpisom nalaz ulazi u karton pacijenta i zapis se zaključava. Svaka kasnija izmjena otvara novu verziju.', label: 'Odobri i potpiši', danger: false, action: 'approve' }),
+      approveBlocked: !noteReady || (s.noteStale && noteReady),
+      approveBtnBg: (!noteReady || (s.noteStale && noteReady)) ? '#C7C7CC' : '#0071E3',
+      approveHint: !noteReady
+        ? 'Nalaz se može odobriti samo iz konačnog transkripta. Završite izjavu.'
+        : (s.noteStale ? 'Transkript je izmijenjen — pripremite nacrt ponovo prije potpisa.' : 'Nacrt je vidljiv samo vama. Potpisom ulazi u karton pacijenta.'),
+      approvedMeta: active.name + ' · 12.09.2026. u 10:41.',
+      processingRows: [
+        { k: 'Snimak', v: 'Nije pohranjen' },
+        { k: 'Transkript', v: 'Memorija sesije' },
+        { k: 'Obrada', v: cloud ? s.cloudProfile + ' · ' + cloudRoute : 'Lokalni model na uređaju' },
+        { k: 'Mikrofon', v: s.mic },
+        { k: 'Toplinska zaštita', v: s.thermal }
+      ],
+
+      reports, history: HIST[s.sel], selName: reports[s.sel].name + ' · ' + reports[s.sel].date,
+      draftCount: s.approved ? 2 : 3, visits,
+
+      confirmOpen: !!s.confirm,
+      confirmTitle: s.confirm ? s.confirm.title : '',
+      confirmBody: s.confirm ? s.confirm.body : '',
+      confirmLabel: s.confirm ? s.confirm.label : '',
+      confirmBtnBg: s.confirm && s.confirm.danger ? '#C0281A' : '#0071E3',
+      confirmNo: () => this.setState({ confirm: null }),
+      confirmYes: () => {
+        const c = s.confirm;
+        this.setState({ confirm: null });
+        if (!c) return;
+        if (c.action === 'clear') this.clearSession();
+        if (c.action === 'logout') { this.clearTimers(); this.clearSession(); this.setState({ screen: 'signin' }); }
+        if (c.action === 'approve') this.setState({ approved: true });
+        if (c.action === 'repeat') {
+          this.clearTimers();
+          this.setState({ screen: 'visit', idx: -1, running: false, finished: false, phase: null, provisional: '', note: null, noteStale: false, segOverride: {}, segEdit: null });
+        }
+      },
+
+      scrollRef: this.scrollRef
+    };
+  }
+}
+
+</script>
+</body>
+</html>

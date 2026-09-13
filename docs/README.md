@@ -5,8 +5,9 @@ privacy rules:
 
 - `backend/app/mediscribe/`: Python provider core, local `whisper.cpp`
   streaming prototype, and its deterministic local draft generator.
-- `frontend/` plus `backend/server.js`: Electron renderer and Node bridge for
-  one approved OpenRouter transcription request after an utterance finishes.
+- `frontend/`: the exact downloaded Design Canvas UI export packaged for the
+  Electron renderer; and `backend/server.js`: the separate Node bridge for one
+  approved OpenRouter transcription request after an utterance finishes.
 
 ## Basic browser prototype
 
@@ -35,14 +36,14 @@ batch file) and open the Vite URL. The browser UI does not persist audio,
 transcripts, or drafts. The post-transcription draft is deterministic and
 local; it never diagnoses or proposes therapy.
 
-The renderer asks the bridge for safe capability flags before enabling a mode.
-Its Settings panel selects MAI or Whisper for the next cloud utterance; secrets
-stay server-side. The current Node bridge submits an utterance after the user
-presses “Završi izjavu”. For local provisional text while speaking, use the
-Python streaming prototype documented in [../backend/README.md](../backend/README.md);
-it is not yet wired into the Electron API and is shown as unavailable rather
-than being simulated. Do not use either prototype for clinical decisions
-without the required validation, consent, and governance work.
+The Electron renderer is currently the literal downloaded Design Canvas export.
+Its interactions and sample clinical data are visual-demo behavior only and
+are not yet wired to the Node bridge. The current Node bridge separately
+submits an utterance after a user presses “Završi izjavu” in its API client.
+For local provisional text while speaking, use the Python streaming prototype
+documented in [../backend/README.md](../backend/README.md). Do not use either
+prototype for clinical decisions without the required validation, consent, and
+governance work.
 
 The full implementation backlog and acceptance criteria are in
 [ui-implementation-spec.md](ui-implementation-spec.md).
