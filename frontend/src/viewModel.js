@@ -4,7 +4,7 @@
 // pointed at a session source instead of its sample records. Every key the
 // markup reads is produced here; `src` is either the scripted demo session or
 // the live microphone session, so the two behave identically on screen.
-import { CHIP, CONSENT, PROFILES, PHASES, ERRORS, GOVERNANCE, DEPTS, initials, accIni, mmss } from "./data.js";
+import { CHIP, CONSENT, PROFILES, PHASES, ERRORS, GOVERNANCE, DEPTS, initials, accIni, mmss, datumPuni, datumKratki, sat } from "./data.js";
 
 export function buildViewModel(app, src) {
     const s = app.state;
@@ -145,9 +145,11 @@ export function buildViewModel(app, src) {
       return {
         time: v.time, name: v.name, reason: v.reason, status, initials: v.initials || initials(v.name),
         chipBg: c[0], chipFg: c[1],
-        actionable: !!(v.now || v.draft),
-        actionLabel: v.now ? (s.approved ? 'Otvori' : 'Započni') : 'Pregledaj',
-        action: v.now ? (s.approved ? app.go('reports') : app.go('consent')) : app.go('review')
+        actionable: !!(v.now || v.draft || v.patient),
+        actionLabel: v.patient ? 'Započni' : (v.now ? (s.approved ? 'Otvori' : 'Započni') : 'Pregledaj'),
+        action: v.patient
+          ? app.startFor(v.patient)
+          : (v.now ? (s.approved ? app.go('reports') : app.startFor(null)) : app.go('review'))
       };
     });
 
@@ -160,6 +162,34 @@ export function buildViewModel(app, src) {
 
     // What is waiting for review is counted, never asserted.
     const draftCount = src.reports.filter(r => r.status === 'Nacrt').length;
+
+    const patient = s.patient;
+    const day = datumPuni;
+
+    // The bell answers one question: what needs me? Every line below is a real
+    // record or a real state of this machine, and every one of them opens the
+    // screen where it can be dealt with.
+    const notifications = [];
+    if (s.bridgeDown) {
+      notifications.push({ dot: '#C0281A', title: 'Servis nije dostupan', at: '',
+        text: 'Bridge na ovom računaru ne odgovara, pa snimanje i sačuvani nalazi nisu dostupni.',
+        open: app.go('today') });
+    }
+    if (s.localDraftReason) {
+      notifications.push({ dot: '#C77700', title: 'Nema lokalnog modela za nalaz', at: '',
+        text: s.localDraftReason, open: () => app.setState({ settingsOpen: true, notificationsOpen: false }) });
+    }
+    src.reports.forEach((report, index) => {
+      if (report.status !== 'Nacrt') return;
+      notifications.push({ dot: '#C77700', title: 'Nacrt čeka provjeru', at: report.date,
+        text: report.name + ' · ' + report.kind,
+        open: () => app.setState({ sel: index, screen: 'reports', notificationsOpen: false }) });
+    });
+    flags.forEach((flag) => {
+      notifications.push({ dot: flag.dot, title: flag.kind, at: '', text: flag.text,
+        open: () => app.setState({ screen: 'review', jump: flag.a, notificationsOpen: false }) });
+    });
+    const shownNotifications = notifications.slice(0, 8);
 
     const lowConf = src.lines.slice(0, shown + 1).some((l, i) => l.low || (l.unk && !s.speakerFixed[i]));
 
@@ -183,6 +213,23 @@ export function buildViewModel(app, src) {
       }] : []),
 
       statusLabel: statusMap.label, statusBg: statusMap.bg, statusBorder: statusMap.border, statusFg: statusMap.fg, statusDot: statusMap.dot,
+      today: day(Date.now()),
+      greeting: (() => { const h = new Date().getHours(); return h < 11 ? 'Dobro jutro' : (h < 18 ? 'Dobar dan' : 'Dobro veče'); })(),
+      patientIni: patient ? initials(patient.name) : '+',
+      visitCount: src.visits.filter(v => !v.now).length,
+      patientName: patient ? patient.name + (patient.age ? ' · ' + patient.age + ' g.' : '') : 'Bez identifikatora pacijenta',
+      patientReason: patient ? patient.reason : 'Sesija se pokreće bez unosa pacijenta',
+      patientTime: patient ? patient.time : sat(Date.now()),
+      sessionDate: day(s.startedAt || Date.now()),
+
+      notificationsOpen: !!s.notificationsOpen,
+      toggleNotifications: () => app.setState(st => ({ notificationsOpen: !st.notificationsOpen, accountMenuOpen: false })),
+      bellBg: s.notificationsOpen ? '#F0F0F3' : 'transparent',
+      notifications: shownNotifications,
+      noNotifications: shownNotifications.length === 0,
+      hasNotifications: shownNotifications.length > 0,
+      notificationCount: shownNotifications.length,
+
       hasDrafts: draftCount > 0,
       draftsTitle: draftCount === 0
         ? 'Nijedan nacrt ne čeka provjeru'
@@ -261,7 +308,7 @@ export function buildViewModel(app, src) {
       })),
       accountMenuOpen: s.accountMenuOpen,
       accountRowBg: s.accountMenuOpen ? '#F0F0F3' : '#fff',
-      toggleAccountMenu: () => app.setState(st => ({ accountMenuOpen: !st.accountMenuOpen })),
+      toggleAccountMenu: () => app.setState(st => ({ accountMenuOpen: !st.accountMenuOpen, notificationsOpen: false })),
       activeName: active.name, activeDept: active.dept, activeIni: accIni(active.name),
       activeShort: active.name.replace(/^dr\.\s*/, 'dr. '),
       accounts: s.accounts.map((a, i) => ({
@@ -364,7 +411,7 @@ export function buildViewModel(app, src) {
       approveHint: !noteReady
         ? 'Nalaz se može odobriti samo iz konačnog transkripta. Završite izjavu.'
         : (s.noteStale ? 'Transkript je izmijenjen — pripremite nacrt ponovo prije potpisa.' : 'Nacrt je vidljiv samo vama. Potpisom ulazi u karton pacijenta.'),
-      approvedMeta: active.name + ' · ' + new Date(s.approvedAt || Date.now()).toLocaleString('bs-BA'),
+      approvedMeta: active.name + ' · ' + datumKratki(s.approvedAt || Date.now()) + ' u ' + sat(s.approvedAt || Date.now()) + '.',
       processingRows: [
         { k: 'Snimak', v: 'Nije pohranjen' },
         { k: 'Transkript', v: 'Memorija sesije' },

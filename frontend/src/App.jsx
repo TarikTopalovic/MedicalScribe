@@ -13,7 +13,7 @@ import React from "react";
 import Screen from "./generated/Screen.jsx";
 import { buildViewModel } from "./viewModel.js";
 import { demoSource, liveSource } from "./sources.js";
-import { TR, MICS, PROFILES, genNote } from "./data.js";
+import { TR, MICS, PROFILES, genNote, sat } from "./data.js";
 import { Capture, listMicrophones } from "./capture.js";
 import * as api from "./api.js";
 
@@ -59,6 +59,7 @@ export default class App extends React.Component {
     demo: false, configReady: false, bridgeDown: false,
     liveSegments: [], noteSections: null, noteWarnings: [],
     sessions: [], sessionId: null, pending: 0, mics: [], storedReports: [], micLevel: 0,
+    schedule: [], patient: null, notificationsOpen: false,
   };
 
   scrollRef = React.createRef();
@@ -127,6 +128,7 @@ export default class App extends React.Component {
       }));
       this.loadMicrophones();
       this.loadReports();
+      this.loadSchedule();
     } catch {
       this.setState({ demo: false, configReady: true, bridgeDown: true });
     }
@@ -139,6 +141,14 @@ export default class App extends React.Component {
       const body = await api.getReports();
       this.setState({ storedReports: body.reports || [] });
     } catch { /* the in-memory sessions stay */ }
+  }
+
+  // The day's patients come from the bridge, never from the interface code.
+  async loadSchedule() {
+    try {
+      const body = await api.getSchedule();
+      this.setState({ schedule: body.visits || [] });
+    } catch { /* an empty day is shown rather than an invented one */ }
   }
 
   async loadMicrophones() {
@@ -170,7 +180,12 @@ export default class App extends React.Component {
     } catch { /* storage unavailable */ }
   }
 
-  go = (screen) => () => this.setState({ screen, accountMenuOpen: false });
+  go = (screen) => () => this.setState({ screen, accountMenuOpen: false, notificationsOpen: false });
+
+  // A visit from the schedule opens the consent step for that patient.
+  startFor = (patient) => () => this.setState({
+    patient: patient || null, screen: "consent", accountMenuOpen: false, notificationsOpen: false,
+  });
 
   ask = (c) => () => this.setState({ confirm: c, accountMenuOpen: false, settingsOpen: false });
 
@@ -222,7 +237,7 @@ export default class App extends React.Component {
     this.capture?.release();
     if (this.state.sessionId) api.deleteSession(this.state.sessionId).catch(() => {});
     this.setState({
-      screen: "today", consent: [false, false, false], idx: -1, running: false, phase: null, finished: false,
+      screen: "today", patient: null, consent: [false, false, false], idx: -1, running: false, phase: null, finished: false,
       provisional: "", segOverride: {}, speakerFixed: {}, segEdit: null, manualOpen: false, manualText: "",
       note: null, noteTouched: {}, noteStale: false, approved: false, cloudApproved: false,
       settingsOpen: false, confirm: null, errKey: null,
@@ -388,13 +403,13 @@ export default class App extends React.Component {
             ? s.sessions
             : s.sessions.concat([{
                 id: s.sessionId,
-                name: "Izjava " + new Date().toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" }),
+                name: s.patient?.name || ("Izjava " + sat(Date.now())),
                 summary: (sections[0]?.items?.[0]?.text || "Snimljena izjava").slice(0, 70),
                 startedAt: s.startedAt, finishedAt: Date.now(), mode: s.mode, approved: false,
                 events: [
-                  { title: "v1 · nacrt", at: new Date().toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" }), text: "Nacrt pripremljen iz konačnog transkripta.", dot: "#C77700" },
-                  { title: "Konačni transkript", at: new Date().toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" }), text: s.liveSegments.length + " segmenata.", dot: "#0071E3" },
-                  { title: "Sesija otvorena", at: new Date(s.startedAt).toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" }), text: "Saglasnost potvrđena · " + s.mode, dot: "#C2C2C7" },
+                  { title: "v1 · nacrt", at: sat(Date.now()), text: "Nacrt pripremljen iz konačnog transkripta.", dot: "#C77700" },
+                  { title: "Konačni transkript", at: sat(Date.now()), text: s.liveSegments.length + " segmenata.", dot: "#0071E3" },
+                  { title: "Sesija otvorena", at: sat(s.startedAt), text: "Saglasnost potvrđena · " + s.mode, dot: "#C2C2C7" },
                 ],
               }]),
         };

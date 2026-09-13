@@ -26,6 +26,7 @@ export const VIEW_MODEL_KEYS = [
   "askClearSession",
   "askLogOut",
   "askRepeat",
+  "bellBg",
   "canAddDept",
   "cancelSeg",
   "captureBusy",
@@ -69,7 +70,8 @@ export const VIEW_MODEL_KEYS = [
   "goToday",
   "goVisit",
   "governance",
-  "hasDrafts",
+  "greeting",
+  "hasNotifications",
   "history",
   "idleNotice",
   "isApp",
@@ -91,6 +93,7 @@ export const VIEW_MODEL_KEYS = [
   "modeOptions",
   "modeShort",
   "noFlags",
+  "noNotifications",
   "notApproved",
   "noteChip",
   "noteChipBg",
@@ -98,11 +101,18 @@ export const VIEW_MODEL_KEYS = [
   "noteFields",
   "noteMeta",
   "noteStale",
+  "notificationCount",
+  "notifications",
+  "notificationsOpen",
   "onManualInput",
   "onMicChange",
   "onSegInput",
   "openPrivacy",
   "openSettings",
+  "patientIni",
+  "patientName",
+  "patientReason",
+  "patientTime",
   "phaseLabel",
   "privacyOpen",
   "processingRows",
@@ -135,6 +145,7 @@ export const VIEW_MODEL_KEYS = [
   "segDraft",
   "segments",
   "selName",
+  "sessionDate",
   "settingsLocked",
   "settingsOpen",
   "showBack",
@@ -152,13 +163,16 @@ export const VIEW_MODEL_KEYS = [
   "switchToLocal",
   "tabs",
   "thermalText",
+  "today",
   "toggleAccountMenu",
   "toggleCloudApproval",
   "toggleDeptPicker",
   "toggleManual",
+  "toggleNotifications",
   "togglePw",
   "toggleRemember",
   "toggleRules",
+  "visitCount",
   "visits"
 ];
 
@@ -185,6 +199,7 @@ export default function Screen(vm) {
     askClearSession,
     askLogOut,
     askRepeat,
+    bellBg,
     canAddDept,
     cancelSeg,
     captureBusy,
@@ -228,7 +243,8 @@ export default function Screen(vm) {
     goToday,
     goVisit,
     governance,
-    hasDrafts,
+    greeting,
+    hasNotifications,
     history,
     idleNotice,
     isApp,
@@ -250,6 +266,7 @@ export default function Screen(vm) {
     modeOptions,
     modeShort,
     noFlags,
+    noNotifications,
     notApproved,
     noteChip,
     noteChipBg,
@@ -257,11 +274,18 @@ export default function Screen(vm) {
     noteFields,
     noteMeta,
     noteStale,
+    notificationCount,
+    notifications,
+    notificationsOpen,
     onManualInput,
     onMicChange,
     onSegInput,
     openPrivacy,
     openSettings,
+    patientIni,
+    patientName,
+    patientReason,
+    patientTime,
     phaseLabel,
     privacyOpen,
     processingRows,
@@ -294,6 +318,7 @@ export default function Screen(vm) {
     segDraft,
     segments,
     selName,
+    sessionDate,
     settingsLocked,
     settingsOpen,
     showBack,
@@ -311,13 +336,16 @@ export default function Screen(vm) {
     switchToLocal,
     tabs,
     thermalText,
+    today,
     toggleAccountMenu,
     toggleCloudApproval,
     toggleDeptPicker,
     toggleManual,
+    toggleNotifications,
     togglePw,
     toggleRemember,
     toggleRules,
+    visitCount,
     visits,
   } = vm;
   return (
@@ -338,17 +366,51 @@ export default function Screen(vm) {
             {(isApp) ? (
               <>
               <div style={{ "position": "relative" }}>
-                <button onClick={goReports} aria-label={draftsTitle} title={draftsTitle} style={{ "width": "34px", "height": "34px", "flex": "none", "borderRadius": "9px", "display": "flex", "alignItems": "center", "justifyContent": "center", "color": "#6E6E73" }} className="dch-1">
+                <button onClick={toggleNotifications} aria-label={draftsTitle} title={draftsTitle} style={{ "width": "34px", "height": "34px", "flex": "none", "borderRadius": "9px", "display": "flex", "alignItems": "center", "justifyContent": "center", "color": "#6E6E73", "background": bellBg }} className="dch-1">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 15.5V10a6 6 0 0 0-12 0v5.5L4.5 18h15z" />
                     <path d="M10 21a2.2 2.2 0 0 0 4 0" />
                   </svg>
                 </button>
-                {(hasDrafts) ? (
+                {(hasNotifications) ? (
                   <>
                   <span style={{ "position": "absolute", "top": "-2px", "right": "-2px", "minWidth": "17px", "height": "17px", "padding": "0 4px", "boxSizing": "border-box", "borderRadius": "980px", "background": "#D62B20", "color": "#fff", "border": "2px solid #fff", "fontSize": "10px", "fontWeight": "700", "display": "flex", "alignItems": "center", "justifyContent": "center", "pointerEvents": "none" }}>
-                    {draftCount}
+                    {notificationCount}
                   </span>
+                  </>
+                ) : null}
+                {(notificationsOpen) ? (
+                  <>
+                  <div style={{ "position": "absolute", "top": "42px", "right": "0", "width": "310px", "background": "#fff", "border": "1px solid #E3E3E7", "borderRadius": "14px", "boxShadow": "0 16px 38px rgba(0,0,0,.16)", "padding": "6px", "zIndex": "40", "animation": "zin .16s ease both" }}>
+                    <div style={{ "fontSize": "10.5px", "fontWeight": "700", "letterSpacing": ".06em", "textTransform": "uppercase", "color": "#86868B", "padding": "7px 9px 5px" }}>
+                      {"Traži vašu pažnju"}
+                    </div>
+                    {(notifications || []).map((n, n__i) => (
+                      <React.Fragment key={n__i}>
+                        <button onClick={n.open} style={{ "display": "flex", "alignItems": "flex-start", "gap": "9px", "width": "100%", "textAlign": "left", "padding": "8px 9px", "borderRadius": "9px" }} className="dch-2">
+                          <span style={{ "width": "8px", "height": "8px", "flex": "none", "marginTop": "5px", "borderRadius": "50%", "background": n.dot }} />
+                          <span style={{ "minWidth": "0", "flex": "1" }}>
+                            <span style={{ "display": "block", "fontSize": "12.5px", "fontWeight": "600", "letterSpacing": "-0.01em" }}>
+                              {n.title}
+                            </span>
+                            <span style={{ "display": "block", "fontSize": "11.5px", "color": "#86868B", "lineHeight": "1.45", "marginTop": "2px" }}>
+                              {n.text}
+                            </span>
+                          </span>
+                          <span style={{ "fontSize": "11px", "color": "#86868B", "flex": "none", "marginTop": "2px" }}>
+                            {n.at}
+                          </span>
+                        </button>
+                      </React.Fragment>
+                    ))}
+                    {(noNotifications) ? (
+                      <>
+                      <div style={{ "padding": "10px 9px 12px", "fontSize": "12.5px", "color": "#86868B", "lineHeight": "1.5" }}>
+                        {"Nema ničega na čekanju. Svaki nacrt je pregledan."}
+                      </div>
+                      </>
+                    ) : null}
+                  </div>
                   </>
                 ) : null}
               </div>
@@ -728,10 +790,11 @@ export default function Screen(vm) {
               <div data-screen-label="Danas" style={{ "display": "flex", "flexDirection": "column", "gap": "16px" }}>
                 <div>
                   <div style={{ "fontSize": "13px", "fontWeight": "600", "color": "#86868B" }}>
-                    {"Subota, 12. septembar 2026."}
+                    {today}
                   </div>
                   <div style={{ "fontSize": "26px", "fontWeight": "700", "letterSpacing": "-0.03em", "marginTop": "3px" }}>
-                    {"Dobro jutro, "}
+                    {greeting}
+                    {", "}
                     {activeShort}
                   </div>
                 </div>
@@ -741,7 +804,7 @@ export default function Screen(vm) {
                       {"Posjete danas"}
                     </div>
                     <div style={{ "fontSize": "28px", "fontWeight": "600", "letterSpacing": "-0.03em", "marginTop": "5px" }}>
-                      {"6"}
+                      {visitCount}
                     </div>
                   </div>
                   <div style={{ "background": "#fff", "border": "1px solid #E3E3E7", "borderRadius": "16px", "padding": "15px 17px" }}>
@@ -812,14 +875,17 @@ export default function Screen(vm) {
                 </div>
                 <div style={{ "background": "#fff", "border": "1px solid #E3E3E7", "borderRadius": "16px", "padding": "14px 17px", "display": "flex", "alignItems": "center", "gap": "12px", "flexWrap": "wrap" }}>
                   <div style={{ "width": "36px", "height": "36px", "flex": "none", "borderRadius": "50%", "background": "#F0F0F3", "color": "#6E6E73", "display": "flex", "alignItems": "center", "justifyContent": "center", "fontSize": "12.5px", "fontWeight": "700" }}>
-                    {"AH"}
+                    {patientIni}
                   </div>
                   <div style={{ "flex": "1", "minWidth": "150px" }}>
                     <div style={{ "fontSize": "15px", "fontWeight": "600", "letterSpacing": "-0.02em" }}>
-                      {"Amina Hodžić · 34 g."}
+                      {patientName}
                     </div>
                     <div style={{ "fontSize": "12.5px", "color": "#86868B", "marginTop": "2px" }}>
-                      {"Uporan kašalj i temperatura · 10:15 · "}
+                      {patientReason}
+                      {" · "}
+                      {patientTime}
+                      {" · "}
                       {activeDept}
                     </div>
                   </div>
@@ -941,7 +1007,8 @@ export default function Screen(vm) {
                     {"Korak 2 od 3 · snimanje"}
                   </div>
                   <div style={{ "fontSize": "25px", "fontWeight": "700", "letterSpacing": "-0.03em", "marginTop": "4px" }}>
-                    {"Amina Hodžić · sesija u toku"}
+                    {patientName}
+                    {" · sesija u toku"}
                   </div>
                 </div>
                 <div style={{ "background": "#fff", "border": "1px solid #E3E3E7", "borderRadius": "16px", "padding": "16px 18px", "display": "flex", "flexDirection": "column", "gap": "14px" }}>
@@ -1137,7 +1204,9 @@ export default function Screen(vm) {
                     {"Korak 3 od 3 · pregled i odobrenje"}
                   </div>
                   <div style={{ "fontSize": "25px", "fontWeight": "700", "letterSpacing": "-0.03em", "marginTop": "4px" }}>
-                    {"Amina Hodžić · 12.09.2026."}
+                    {patientName}
+                    {" · "}
+                    {sessionDate}
                   </div>
                   <div style={{ "fontSize": "13px", "color": "#6E6E73", "marginTop": "4px" }}>
                     {activeName}

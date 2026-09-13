@@ -107,5 +107,25 @@ export const GOVERNANCE = [
 
 export const initials = (n) => n.split(' ').map(w => w[0]).join('');
 export const accIni = (n) => n.replace(/^dr\.\s*/, '').split(' ').map(w => w[0]).join('');
+// Chromium does not ship a bs-BA date format on every machine: it rendered
+// the clinic's day as "2026 M09 13, Sun". Bosnian dates are written here so
+// every machine shows the same thing.
+const DANI = ['Nedjelja', 'Ponedjeljak', 'Utorak', 'Srijeda', 'Četvrtak', 'Petak', 'Subota'];
+const MJESECI = ['januar', 'februar', 'mart', 'april', 'maj', 'juni', 'juli', 'august', 'septembar', 'oktobar', 'novembar', 'decembar'];
+const pad = (n) => String(n).padStart(2, '0');
+
+export const datumPuni = (value) => {
+  const d = new Date(value);
+  return `${DANI[d.getDay()]}, ${d.getDate()}. ${MJESECI[d.getMonth()]} ${d.getFullYear()}.`;
+};
+export const datumKratki = (value) => {
+  const d = new Date(value);
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}.`;
+};
+export const sat = (value) => {
+  const d = new Date(value);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const mmss = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 export const genNote = () => SOAP.map(sec => sec.items.map(i => i.t).join(' '));

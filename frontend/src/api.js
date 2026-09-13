@@ -45,6 +45,11 @@ export function sendUtterance(id, blob, profile, timing) {
   return json(`/api/sessions/${encodeURIComponent(id)}/audio`, { method: "POST", body: form });
 }
 
+// The clinic's day, held by the bridge in backend/data/schedule.json.
+export function getSchedule() {
+  return json("/api/schedule");
+}
+
 // Finalized notes already saved. Empty when persistence is off.
 export function getReports() {
   return json("/api/reports");

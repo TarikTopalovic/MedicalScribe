@@ -5,7 +5,7 @@
 // from the real microphone session. Nothing below the source layer knows which
 // one is running, so the screens behave identically.
 
-import { TR, SOAP, FLAGS, VISITS, MICS, genNote } from "./data.js";
+import { TR, SOAP, FLAGS, VISITS, MICS, genNote, datumKratki, sat } from "./data.js";
 
 const DEMO_REPORTS = (s) => [
   { name: "Amina Hodžić", kind: s.approved ? "Posjeta · potpisano" : "Posjeta · nacrt", date: "12.09.2026.", version: s.approved ? "v2" : "v1", status: s.approved ? "Zaključano" : "Nacrt" },
@@ -59,8 +59,8 @@ export function demoSource(app) {
   };
 }
 
-const clock = (at) => (at ? new Date(at).toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" }) : "--:--");
-const day = (at) => (at ? new Date(at).toLocaleDateString("bs-BA") : "");
+const clock = (at) => (at ? sat(at) : "--:--");
+const day = (at) => (at ? datumKratki(at) : "");
 
 // A note section carries its evidence, so the draft panel can link every line
 // back to the transcript segment it came from.
@@ -107,7 +107,7 @@ export function liveSource(app) {
 
   const reports = stored.length
     ? stored.map((report) => ({
-        name: "Izjava · " + clock(report.createdAt),
+        name: report.patient || "Izjava · " + clock(report.createdAt),
         kind: report.summary || "Nacrt bez sadržaja",
         date: day(report.createdAt),
         version: "v" + (report.revision || 1),
@@ -134,11 +134,17 @@ export function liveSource(app) {
       ? finished.map((session) => session.events)
       : [[{ title: "Nema zapisa", at: "--:--", text: "Pokrenite izjavu da bi se ovdje pojavio tok obrade.", dot: "#C2C2C7" }]];
 
+  // The day: the open action first, then the clinic's booked visits, then
+  // whatever this run has already finished.
   const visits = [
     {
       time: clock(Date.now()), name: "Nova izjava", reason: "Pokreni sesiju bez unosa identifikatora pacijenta",
       status: s.finished ? "Nacrt" : "Na čekanju", now: true, initials: "+",
     },
+    ...(s.schedule || []).map((visit) => ({
+      time: visit.time, name: visit.name, reason: visit.reason,
+      status: visit.status, patient: visit, booked: true,
+    })),
     ...finished.map((session) => ({
       time: clock(session.startedAt), name: session.name, reason: session.summary || "Snimljena izjava",
       status: session.approved ? "Potpisano" : "Nacrt", draft: !session.approved,

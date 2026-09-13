@@ -1,0 +1,10 @@
+{
+  "comment": "Raspored ordinacije. Uređuje se ovdje; aplikacija ga čita preko /api/schedule i ne drži nijedno ime u kodu sučelja.",
+  "visits": [
+    { "time": "08:30", "name": "Amina Hodžić", "age": 34, "reason": "Uporan kašalj i temperatura", "status": "Potpisano" },
+    { "time": "09:15", "name": "Mirza Selimović", "age": 61, "reason": "Kontrola hipertenzije", "status": "Nacrt" },
+    { "time": "10:00", "name": "Lejla Kovač", "age": 28, "reason": "Bol u donjem dijelu leđa", "status": "Zakazano" },
+    { "time": "10:45", "name": "Nedim Karić", "age": 47, "reason": "Kontrola nakon terapije", "status": "Zakazano" },
+    { "time": "11:30", "name": "Ivana Marić", "age": 39, "reason": "Prva posjeta — umor i nesanica", "status": "Zakazano" }
+  ]
+}

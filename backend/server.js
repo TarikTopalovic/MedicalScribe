@@ -1,4 +1,5 @@
 // Browser bridge for the optional remote transcription path.
+const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
 
@@ -65,6 +66,26 @@ app.get("/api/reports", async (req, res) => {
 
 // Safe capability report for the desktop renderer. It deliberately contains no
 // token, model-provider response, device path, or patient/session data.
+// The clinic's day. It lives in backend/data/schedule.json so the interface
+// holds no patient name of its own, and it is read per request so editing the
+// file shows up without restarting the bridge.
+app.get("/api/schedule", (req, res) => {
+  try {
+    const file = path.resolve(__dirname, "data", "schedule.json");
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    const visits = (Array.isArray(parsed.visits) ? parsed.visits : []).map((visit) => ({
+      time: String(visit.time || ""),
+      name: String(visit.name || ""),
+      age: Number.isFinite(Number(visit.age)) ? Number(visit.age) : null,
+      reason: String(visit.reason || ""),
+      status: String(visit.status || "Zakazano"),
+    })).filter((visit) => visit.name);
+    return res.json({ visits });
+  } catch {
+    return res.json({ visits: [] });
+  }
+});
+
 app.get("/api/config", async (req, res) => {
   const cloud = transcribeRouter.capabilities();
   const local = localTranscribeRouter.capabilities();
