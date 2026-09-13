@@ -13,6 +13,8 @@ const cors = require("cors");
 const transcribeRouter = require("./routes/transcribe_openrouter");
 const localTranscribeRouter = require("./routes/transcribe_local");
 const structureRouter = require("./routes/structure_local");
+const sessionsRouter = require("./routes/sessions");
+const { draftCapabilities } = require("./lib/note");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,18 +49,31 @@ app.use(express.json());
 app.use("/api/transcribe", transcribeRouter);
 app.use("/api/transcribe/local", localTranscribeRouter);
 app.use("/api/structure", structureRouter);
+app.use("/api/sessions", sessionsRouter);
 
 // Safe capability report for the desktop renderer. It deliberately contains no
 // token, model-provider response, device path, or patient/session data.
 app.get("/api/config", (req, res) => {
   const cloud = transcribeRouter.capabilities();
   const local = localTranscribeRouter.capabilities();
+  const draft = draftCapabilities();
   res.json({
-    version: 1,
+    version: 2,
     language: "bs",
     local: {
       available: Boolean(local.available),
       reason: local.available ? "" : local.error,
+    },
+    // Hybrid transcribes on the device and sends only the finished text out.
+    hybrid: {
+      available: Boolean(local.available && draft.external),
+      reason: local.available
+        ? (draft.external ? "" : "Vanjski model za nalaz nije konfiguriran.")
+        : local.error,
+    },
+    draft: {
+      external: draft.external,
+      reason: draft.external ? "" : "Nacrt se priprema lokalno.",
     },
     cloud: {
       available: Boolean(cloud.available),

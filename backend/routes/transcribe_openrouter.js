@@ -68,16 +68,16 @@ function remoteSettings(approved, requestedProfile) {
   return { ...capability, apiKey: process.env.OPENROUTER_API_KEY, model };
 }
 
-router.post("/", upload.single("audio"), async (req, res) => {
-  if (!req.file || !req.file.buffer.length) {
-    return res.status(400).json({ greska: "Audio fajl nije poslan ili format nije podržan." });
+// One completed utterance, forwarded once. Exported so the session API sends
+// audio through exactly the same approval and routing checks.
+async function transcribeRemote(buffer, mimetype, { approved, profile }) {
+  const settings = remoteSettings(approved, profile);
+  if (settings.error) {
+    const error = new Error(settings.error);
+    error.status = settings.status;
+    throw error;
   }
-
   try {
-    const settings = remoteSettings(req.body.remote_processing_approved === "true", req.body.profile);
-    if (settings.error) {
-      return res.status(settings.status).json({ greska: settings.error });
-    }
     const odgovor = await fetch(`${settings.apiBase}/audio/transcriptions`, {
       method: "POST",
       headers: {
@@ -89,8 +89,8 @@ router.post("/", upload.single("audio"), async (req, res) => {
       body: JSON.stringify({
         model: settings.model,
         input_audio: {
-          data: req.file.buffer.toString("base64"),
-          format: AUDIO_FORMATS[req.file.mimetype],
+          data: buffer.toString("base64"),
+          format: AUDIO_FORMATS[mimetype] || "webm",
         },
         language: "bs",
         temperature: 0,
@@ -101,25 +101,47 @@ router.post("/", upload.single("audio"), async (req, res) => {
     });
     const rezultat = await odgovor.json().catch(() => ({}));
     if (!odgovor.ok) {
-      const status = odgovor.status === 402 ? 402 : 502;
-      return res.status(status).json({
-        greska: status === 402 ? "Nedostaje OpenRouter kredit." : "Vanjska transkripcija nije uspjela.",
-      });
+      const error = new Error(odgovor.status === 402 ? "Nedostaje OpenRouter kredit." : "Vanjska transkripcija nije uspjela.");
+      error.status = odgovor.status === 402 ? 402 : 502;
+      throw error;
     }
     const language = String(rezultat.language || "").trim().toLowerCase();
     if (language && !["bs", "bs-ba", "bos", "bosnian"].includes(language)) {
-      return res.status(502).json({ greska: "Servis nije vratio bosanski transkript." });
+      const error = new Error("Servis nije vratio bosanski transkript.");
+      error.status = 502;
+      throw error;
     }
     const text = String(rezultat.text || "").trim();
     if (!text) {
-      return res.status(502).json({ greska: "Servis nije vratio tekst transkripta." });
+      const error = new Error("Servis nije vratio tekst transkripta.");
+      error.status = 502;
+      throw error;
     }
-    return res.json({ text, language: "bs" });
+    return { text, language: "bs", segments: rezultat.segments || [] };
   } catch (error) {
     // Do not serialize or log provider response bodies, audio, or transcript.
-    return res.status(502).json({ greska: "Vanjska transkripcija nije dostupna." });
+    if (error.status) throw error;
+    const safe = new Error("Vanjska transkripcija nije dostupna.");
+    safe.status = 502;
+    throw safe;
+  }
+}
+
+router.post("/", upload.single("audio"), async (req, res) => {
+  if (!req.file || !req.file.buffer.length) {
+    return res.status(400).json({ greska: "Audio fajl nije poslan ili format nije podržan." });
+  }
+  try {
+    const result = await transcribeRemote(req.file.buffer, req.file.mimetype, {
+      approved: req.body.remote_processing_approved === "true",
+      profile: req.body.profile,
+    });
+    return res.json({ text: result.text, language: result.language });
+  } catch (error) {
+    return res.status(error.status || 502).json({ greska: error.message });
   }
 });
 
 module.exports = router;
 module.exports.capabilities = remoteCapability;
+module.exports.transcribeRemote = transcribeRemote;

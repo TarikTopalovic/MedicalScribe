@@ -1,13 +1,15 @@
 {
   "name": "medscribe-ai-frontend",
   "version": "1.0.0",
-  "description": "Frontend za MedScribe AI - snimanje, transkripcija i elektronski karton",
+  "description": "MediScribe renderer \u2014 the Design Canvas export, transpiled and wired to the local bridge",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "design": "python tools/dc2jsx.py design/MediScribe.dc.html --out-jsx src/generated/Screen.jsx --out-css src/generated/design.css",
+    "design:check": "npm run design && git diff --exit-code -- src/generated"
   },
   "dependencies": {
     "react": "^18.3.1",

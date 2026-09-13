@@ -70,11 +70,12 @@ function run(command, args, timeoutMs) {
   });
 }
 
-router.post("/", upload.single("audio"), async (req, res) => {
-  if (!req.file?.buffer?.length) return res.status(400).json({ greska: "Audio fajl nije poslan ili format nije podržan." });
+// One completed utterance, decoded on this machine. Exported so the session
+// API can reuse the same single-decode guard as the standalone route.
+async function transcribeLocal(buffer) {
   const settings = localCapabilities();
-  if (!settings.available) return res.status(503).json({ greska: settings.error });
-  if (localDecodeBusy) return res.status(409).json({ greska: "Lokalna transkripcija je već u toku. Sačekajte završetak trenutne izjave." });
+  if (!settings.available) { const error = new Error(settings.error); error.status = 503; throw error; }
+  if (localDecodeBusy) { const error = new Error("Lokalna transkripcija je već u toku. Sačekajte završetak trenutne izjave."); error.status = 409; throw error; }
 
   localDecodeBusy = true;
   let directory;
@@ -83,23 +84,35 @@ router.post("/", upload.single("audio"), async (req, res) => {
     const token = crypto.randomUUID();
     const sourcePath = path.join(directory, `${token}.input`);
     const wavPath = path.join(directory, `${token}.wav`);
-    await fs.promises.writeFile(sourcePath, req.file.buffer, { mode: 0o600 });
+    await fs.promises.writeFile(sourcePath, buffer, { mode: 0o600 });
     await run(settings.ffmpeg, ["-y", "-loglevel", "error", "-i", sourcePath, "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath], 30_000);
     const script = path.resolve(__dirname, "..", "..", "scripts", "transcribe_local_once.py");
     const threads = String(Math.max(1, Number.parseInt(process.env.MEDISCRIBE_LOCAL_THREADS || "", 10) || os.cpus().length));
     const output = await run(settings.python, [script, wavPath, "--binary", settings.binary, "--model", settings.model, "--threads", threads, "--max-cpu-temperature", "85"], 190_000);
     const result = JSON.parse(output);
     if (!result.text || result.language !== "bs") throw new Error("Local transcription returned no valid Bosnian text");
-    return res.json({ text: result.text, language: "bs", segments: result.segments || [] });
+    return { text: result.text, language: "bs", segments: result.segments || [] };
   } catch (error) {
-    const message = String(error?.message || "");
-    const thermal = /temperature|thermal|ohladi/i.test(message);
-    return res.status(thermal ? 503 : 502).json({ greska: thermal ? "Lokalna transkripcija je zaustavljena da se uređaj ohladi." : "Lokalna transkripcija nije uspjela." });
+    if (error.status) throw error;
+    const thermal = /temperature|thermal|ohladi/i.test(String(error?.message || ""));
+    const safe = new Error(thermal ? "Lokalna transkripcija je zaustavljena da se uređaj ohladi." : "Lokalna transkripcija nije uspjela.");
+    safe.status = thermal ? 503 : 502;
+    throw safe;
   } finally {
     localDecodeBusy = false;
     if (directory) await fs.promises.rm(directory, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+router.post("/", upload.single("audio"), async (req, res) => {
+  if (!req.file?.buffer?.length) return res.status(400).json({ greska: "Audio fajl nije poslan ili format nije podržan." });
+  try {
+    return res.json(await transcribeLocal(req.file.buffer));
+  } catch (error) {
+    return res.status(error.status || 502).json({ greska: error.message });
   }
 });
 
 module.exports = router;
 module.exports.capabilities = localCapabilities;
+module.exports.transcribeLocal = transcribeLocal;

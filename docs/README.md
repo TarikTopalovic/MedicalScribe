@@ -5,9 +5,11 @@ privacy rules:
 
 - `backend/app/mediscribe/`: Python provider core, local `whisper.cpp`
   streaming prototype, and its deterministic local draft generator.
-- `frontend/`: the downloaded Design Canvas UI layout packaged for Electron;
-  and `backend/server.js`: the loopback API for a finalized cloud or opt-in
-  host-local transcription request and local deterministic draft.
+- `frontend/`: the Design Canvas export transpiled into the React renderer,
+  wired to the loopback API. The export is the source of truth for the
+  interface; see [../frontend/README.md](../frontend/README.md).
+- `backend/server.js`: the loopback API — session lifecycle, one finalized
+  utterance at a time, and draft preparation.
 
 ## Basic browser prototype
 
@@ -36,12 +38,41 @@ batch file) and open the Vite URL. The browser UI does not persist audio,
 transcripts, or drafts. The post-transcription draft is deterministic and
 local; it never diagnoses or proposes therapy.
 
-The Electron renderer uses the downloaded design while its active workflow is
-wired to the Node bridge: it checks safe runtime capabilities, requires all
-visible consent confirmations, records one utterance, sends it once after
-“Završi izjavu”, shows only final text as authoritative, and prepares an
-editable deterministic local draft. It does not persist the session, offer a
-signature, or expose a patient identifier field.
+The renderer checks safe runtime capabilities, requires all visible consent
+confirmations, cuts the recording at speech boundaries, sends one completed
+utterance at a time, shows only final text as authoritative, and prepares an
+editable draft from the final transcript. It does not persist the session or
+expose a patient identifier field. When no provider is configured it replays
+the scripted consultation that ships with the design and says so in the status
+badge.
+
+## Processing modes
+
+| Mode | Audio | Transcript text | Draft note |
+| --- | --- | --- | --- |
+| `local` | stays on the device | stays on the device | Ollama if running, else the deterministic structure |
+| `hybrid` | stays on the device | sent to the external model | OpenRouter |
+| `cloud` | sent to MAI/Whisper | sent | OpenRouter |
+
+`hybrid` and `cloud` are refused by the server unless the request carries the
+clinician's explicit approval. `local` requires nothing external and never
+fails for want of a model.
+
+## Session API
+
+The renderer uses one contract; the transcript stays in the renderer and the
+server keeps only the mode, the approval and an utterance count in memory.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/config` | safe capability flags, mode availability, profile names |
+| `POST /api/sessions` | open a session (`mode`, `remote_processing_approved`) |
+| `POST /api/sessions/:id/audio` | one completed utterance, returns final segments |
+| `POST /api/sessions/:id/draft` | draft the note from the final transcript |
+| `DELETE /api/sessions/:id` | clear the session |
+
+Run the API tests with `cd backend && npm test`, and the Python provider tests
+with `python -m pytest tests`.
 
 For host-side local transcription, do not use Docker. Copy the root
 `.env.example` values into an ignored runtime `.env`, set
