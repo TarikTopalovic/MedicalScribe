@@ -35,6 +35,30 @@ app.use(express.json());
 app.use("/api/transcribe", transcribeRouter);
 app.use("/api/structure", structureRouter);
 
+// Safe capability report for the desktop renderer. It deliberately contains no
+// token, model-provider response, device path, or patient/session data.
+app.get("/api/config", (req, res) => {
+  const cloud = transcribeRouter.capabilities();
+  res.json({
+    version: 1,
+    language: "bs",
+    local: {
+      available: false,
+      reason: "Lokalni Python transkriber još nije povezan s desktop API-jem.",
+    },
+    cloud: {
+      available: Boolean(cloud.available),
+      reason: cloud.available ? "" : cloud.error,
+      profiles: ["mai", "whisper"],
+      defaultProfile: cloud.defaultProfile || "mai",
+      routeLabel: cloud.euOnly ? "EU ruta" : "standardna ruta",
+      routeDescription: cloud.euOnly
+        ? "OpenRouter EU ruta; završena izjava se šalje van uređaja."
+        : "OpenRouter standardna ruta; završena izjava se šalje van uređaja.",
+    },
+  });
+});
+
 // Jednostavan health-check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", poruka: "MediScribe backend radi lokalno." });

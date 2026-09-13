@@ -27,35 +27,45 @@ function enabled(value) {
   return String(value || "").toLowerCase() === "true";
 }
 
-function remoteSettings(approved) {
+function remoteCapability() {
   if (!enabled(process.env.MEDISCRIBE_ALLOW_REMOTE_PROCESSING)) {
-    return { error: "Vanjska obrada nije omogućena na serveru.", status: 403 };
+    return { error: "Vanjska obrada nije omogućena na serveru.", status: 403, available: false };
   }
   if (!process.env.OPENROUTER_API_KEY) {
-    return { error: "OPENROUTER_API_KEY nije podešen na serveru.", status: 503 };
-  }
-  if (!approved) {
-    return { error: "Potvrda za vanjsku obradu je obavezna.", status: 400 };
+    return { error: "Vanjska obrada nije konfigurirana na serveru.", status: 503, available: false };
   }
   const classification = String(process.env.MEDISCRIBE_CLOUD_DATA_CLASSIFICATION || "synthetic").toLowerCase();
   if (!["synthetic", "clinical"].includes(classification)) {
-    return { error: "Cloud klasifikacija mora biti synthetic ili clinical.", status: 503 };
+    return { error: "Vanjska obrada nema valjanu klasifikaciju podataka.", status: 503, available: false };
   }
   const euOnly = enabled(process.env.MEDISCRIBE_OPENROUTER_EU_ONLY);
   if (classification === "clinical" && (!euOnly || !enabled(process.env.MEDISCRIBE_OPENROUTER_DPA_APPROVED))) {
-    return { error: "Klinička cloud obrada nije odobrena za ovaj server.", status: 403 };
+    return { error: "Klinička cloud obrada nije odobrena za ovaj server.", status: 403, available: false };
   }
   const configured = String(process.env.MEDISCRIBE_OPENROUTER_TRANSCRIPTION_MODEL || "").trim();
-  const profile = String(process.env.MEDISCRIBE_OPENROUTER_STT_PROFILE || "mai").toLowerCase();
-  const model = configured || PROFILE_MODELS[profile];
+  const defaultProfile = String(process.env.MEDISCRIBE_OPENROUTER_STT_PROFILE || "mai").toLowerCase();
+  const model = configured || PROFILE_MODELS[defaultProfile];
   if (!model) {
-    return { error: "Odaberi MAI ili Whisper profil na serveru.", status: 503 };
+    return { error: "Odaberi MAI ili Whisper profil na serveru.", status: 503, available: false };
   }
   return {
+    available: true,
     apiBase: euOnly ? "https://eu.openrouter.ai/api/v1" : "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY,
-    model,
+    euOnly,
+    classification,
+    configured,
+    defaultProfile: PROFILE_MODELS[defaultProfile] ? defaultProfile : "mai",
   };
+}
+
+function remoteSettings(approved, requestedProfile) {
+  const capability = remoteCapability();
+  if (!capability.available) return capability;
+  if (!approved) return { error: "Potvrda za vanjsku obradu je obavezna.", status: 400 };
+  const profile = String(requestedProfile || capability.defaultProfile).toLowerCase();
+  const model = capability.configured || PROFILE_MODELS[profile];
+  if (!model) return { error: "Odaberi MAI ili Whisper profil.", status: 400 };
+  return { ...capability, apiKey: process.env.OPENROUTER_API_KEY, model };
 }
 
 router.post("/", upload.single("audio"), async (req, res) => {
@@ -64,7 +74,7 @@ router.post("/", upload.single("audio"), async (req, res) => {
   }
 
   try {
-    const settings = remoteSettings(req.body.remote_processing_approved === "true");
+    const settings = remoteSettings(req.body.remote_processing_approved === "true", req.body.profile);
     if (settings.error) {
       return res.status(settings.status).json({ greska: settings.error });
     }
@@ -112,3 +122,4 @@ router.post("/", upload.single("audio"), async (req, res) => {
 });
 
 module.exports = router;
+module.exports.capabilities = remoteCapability;
