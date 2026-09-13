@@ -13,6 +13,7 @@ const multer = require("multer");
 const { transcribeLocal } = require("./transcribe_local");
 const { transcribeRemote } = require("./transcribe_openrouter");
 const { draftNote } = require("../lib/note");
+const store = require("../lib/store");
 
 const router = express.Router();
 const MODES = new Set(["local", "hybrid", "cloud"]);
@@ -53,8 +54,13 @@ router.post("/", (req, res) => {
   }
   sweep();
   const id = crypto.randomUUID();
-  sessions.set(id, { id, mode, approved, utterances: 0, createdAt: Date.now(), touchedAt: Date.now() });
-  return res.status(201).json({ id, mode });
+  const session = { id, mode, approved, utterances: 0, lastEndMs: 0, recordId: null, createdAt: Date.now(), touchedAt: Date.now() };
+  sessions.set(id, session);
+  // Persistence is best-effort: a consultation never fails on the database.
+  if (store.configured) {
+    store.openSession().then((recordId) => { session.recordId = recordId; }).catch(() => {});
+  }
+  return res.status(201).json({ id, mode, persisted: store.configured });
 });
 
 router.delete("/:id", (req, res) => {
@@ -79,18 +85,25 @@ router.post("/:id/audio", upload.single("audio"), async (req, res) => {
     if (!text) return res.status(502).json({ greska: "Izjava nije prepoznata. Ponovite je." });
     const offset = session.utterances;
     session.utterances += 1;
-    return res.json({
-      final: true,
-      segments: [{
-        index: offset,
-        text,
-        speaker: null,
-        role: "unknown",
-        confidence: result.confidence ?? null,
-        start: result.segments?.[0]?.start ?? null,
-        end: result.segments?.[result.segments.length - 1]?.end ?? null,
-      }],
-    });
+    // The recorder measured the clip; if it did not say, fall back to what the
+    // server observed rather than inventing a duration.
+    const observed = Date.now() - session.createdAt;
+    const startMs = Number.isFinite(Number(req.body.startMs)) ? Number(req.body.startMs) : session.lastEndMs;
+    const endMs = Number.isFinite(Number(req.body.endMs)) ? Number(req.body.endMs) : observed;
+    session.lastEndMs = Math.max(startMs + 1, endMs);
+    const segment = {
+      index: offset,
+      text,
+      speaker: null,
+      role: "unknown",
+      confidence: result.confidence ?? null,
+      startMs,
+      endMs: session.lastEndMs,
+    };
+    if (session.recordId) {
+      store.addSegment(session.recordId, { ...segment, speaker: "unknown" }).catch(() => {});
+    }
+    return res.json({ final: true, segments: [segment] });
   } catch (error) {
     return res.status(error.status || 502).json({ greska: error.message || "Transkripcija nije uspjela." });
   }
@@ -107,7 +120,11 @@ router.post("/:id/draft", async (req, res) => {
   if (!clean.length) return res.status(400).json({ greska: "Nacrt se priprema samo iz konačnog transkripta." });
   try {
     const draft = await draftNote(clean, session.mode);
-    return res.json(draft);
+    let revision = 0;
+    if (session.recordId) {
+      revision = await store.saveDraft(session.recordId, draft).catch(() => 0);
+    }
+    return res.json({ ...draft, revision, persisted: revision > 0 });
   } catch (error) {
     return res.status(error.status || 502).json({ greska: error.message || "Nacrt nije pripremljen." });
   }

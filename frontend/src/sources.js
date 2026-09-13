@@ -102,20 +102,37 @@ export function liveSource(app) {
   const s = app.state;
   const sections = liveSoap(s.noteSections);
   const finished = s.sessions.filter((session) => session.finishedAt);
+  // Saved notes win over this run's memory: they survive a restart.
+  const stored = s.storedReports || [];
 
-  const reports = finished.length
-    ? finished.map((session) => ({
-        name: session.name,
-        kind: session.approved ? "Posjeta · potpisano" : "Posjeta · nacrt",
-        date: day(session.startedAt),
-        version: session.approved ? "v2" : "v1",
-        status: session.approved ? "Zaključano" : "Nacrt",
+  const reports = stored.length
+    ? stored.map((report) => ({
+        name: "Izjava · " + clock(report.createdAt),
+        kind: report.summary || "Nacrt bez sadržaja",
+        date: day(report.createdAt),
+        version: "v" + (report.revision || 1),
+        status: report.status === "finalized" ? "Nacrt" : "Na čekanju",
       }))
-    : [{ name: "Nema sačuvanih nalaza", kind: "Nalazi ostaju u memoriji do zatvaranja programa", date: day(Date.now()), version: "—", status: "Zakazano" }];
+    : finished.length
+      ? finished.map((session) => ({
+          name: session.name,
+          kind: session.approved ? "Posjeta · potpisano" : "Posjeta · nacrt",
+          date: day(session.startedAt),
+          version: session.approved ? "v2" : "v1",
+          status: session.approved ? "Zaključano" : "Nacrt",
+        }))
+      : [{ name: "Nema sačuvanih nalaza", kind: "Nalazi ostaju u memoriji do zatvaranja programa", date: day(Date.now()), version: "—", status: "Zakazano" }];
 
-  const history = finished.length
-    ? finished.map((session) => session.events)
-    : [[{ title: "Nema zapisa", at: "--:--", text: "Pokrenite izjavu da bi se ovdje pojavio tok obrade.", dot: "#C2C2C7" }]];
+  const history = stored.length
+    ? stored.map((report) => [
+        { title: "v" + (report.revision || 1) + " · nacrt", at: clock(report.finalizedAt || report.createdAt),
+          text: "Nacrt je sačuvan. Zvuk nije pohranjen.", dot: "#C77700" },
+        { title: "Sesija otvorena", at: clock(report.createdAt),
+          text: "Transkript i nacrt su vezani za ovu sesiju.", dot: "#C2C2C7" },
+      ])
+    : finished.length
+      ? finished.map((session) => session.events)
+      : [[{ title: "Nema zapisa", at: "--:--", text: "Pokrenite izjavu da bi se ovdje pojavio tok obrade.", dot: "#C2C2C7" }]];
 
   const visits = [
     {

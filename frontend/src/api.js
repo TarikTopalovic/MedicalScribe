@@ -34,11 +34,20 @@ export function deleteSession(id) {
 }
 
 // One completed utterance. Partial audio is never sent.
-export function sendUtterance(id, blob, profile) {
+export function sendUtterance(id, blob, profile, timing) {
   const form = new FormData();
   form.append("audio", blob, "utterance.webm");
   if (profile) form.append("profile", profile);
+  if (timing) {
+    form.append("startMs", String(Math.round(timing.startMs)));
+    form.append("endMs", String(Math.round(timing.endMs)));
+  }
   return json(`/api/sessions/${encodeURIComponent(id)}/audio`, { method: "POST", body: form });
+}
+
+// Finalized notes already saved. Empty when persistence is off.
+export function getReports() {
+  return json("/api/reports");
 }
 
 // The draft is prepared from the final transcript only.

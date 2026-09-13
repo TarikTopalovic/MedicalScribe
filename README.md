@@ -23,6 +23,10 @@ cd ../frontend && npm ci && npm run build
 cd ..       && scripts/start-all.sh      # bridge on :3001, renderer on :5173
 ```
 
+Notes persist to Supabase when `SUPABASE_URL`, the service-role key and
+`MEDISCRIBE_CLINICIAN_EMAIL` are set — transcript and draft revisions only,
+never audio. Without them everything stays in memory and the app runs the same.
+
 For the desktop app, see [docs/README.md](docs/README.md). Copy
 `.env.example` to an ignored `.env` to enable local Whisper or an OpenRouter
 key; without either, the app runs the scripted demonstration that ships with

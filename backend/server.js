@@ -15,6 +15,7 @@ const localTranscribeRouter = require("./routes/transcribe_local");
 const structureRouter = require("./routes/structure_local");
 const sessionsRouter = require("./routes/sessions");
 const { draftCapabilities } = require("./lib/note");
+const store = require("./lib/store");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,6 +52,17 @@ app.use("/api/transcribe/local", localTranscribeRouter);
 app.use("/api/structure", structureRouter);
 app.use("/api/sessions", sessionsRouter);
 
+// Finalized notes for the reports screen. Without persistence there are none,
+// and the renderer falls back to what it holds for the current run.
+app.get("/api/reports", async (req, res) => {
+  if (!store.configured) return res.json({ persisted: false, reports: [] });
+  try {
+    return res.json({ persisted: true, reports: await store.listReports() });
+  } catch {
+    return res.json({ persisted: true, reports: [], greska: "Pohranjeni nalazi trenutno nisu dostupni." });
+  }
+});
+
 // Safe capability report for the desktop renderer. It deliberately contains no
 // token, model-provider response, device path, or patient/session data.
 app.get("/api/config", (req, res) => {
@@ -74,6 +86,11 @@ app.get("/api/config", (req, res) => {
     draft: {
       external: draft.external,
       reason: draft.external ? "" : "Nacrt se priprema lokalno.",
+    },
+    // Transcript and draft revisions are kept; audio never is.
+    storage: {
+      persisted: store.configured,
+      reason: store.configured ? "" : "Nalazi ostaju u memoriji do zatvaranja programa.",
     },
     cloud: {
       available: Boolean(cloud.available),

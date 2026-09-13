@@ -57,7 +57,7 @@ export default class App extends React.Component {
     // --- state the live consultation adds ---------------------------------
     demo: true, configReady: false,
     liveSegments: [], noteSections: null, noteWarnings: [],
-    sessions: [], sessionId: null, pending: 0, mics: [],
+    sessions: [], sessionId: null, pending: 0, mics: [], storedReports: [],
   };
 
   scrollRef = React.createRef();
@@ -104,11 +104,23 @@ export default class App extends React.Component {
         mode: config.local?.available ? "local" : (config.cloud?.available ? "cloud" : s.mode),
         cloudProfile: config.cloud?.defaultProfile === "whisper" ? PROFILES[1] : s.cloudProfile,
       }));
-      if (live) this.loadMicrophones();
+      if (live) {
+        this.loadMicrophones();
+        this.loadReports();
+      }
     } catch {
       // No bridge: the scripted consultation stays available.
       this.setState({ demo: true, configReady: true });
     }
+  }
+
+  // Notes already saved server-side. Persistence is optional, so a failure
+  // here only means the reports screen shows this run's sessions.
+  async loadReports() {
+    try {
+      const body = await api.getReports();
+      this.setState({ storedReports: body.reports || [] });
+    } catch { /* the in-memory sessions stay */ }
   }
 
   async loadMicrophones() {
@@ -231,7 +243,7 @@ export default class App extends React.Component {
       const device = mics.find((m) => m.v === mic);
       this.capture = new Capture({
         onBoundary: () => this.setState({ phase: "boundary" }),
-        onUtterance: (clip) => this.transcribe(clip),
+        onUtterance: (clip, timing) => this.transcribe(clip, timing),
       });
       await this.capture.start(device?.id);
     } catch (error) {
@@ -241,12 +253,12 @@ export default class App extends React.Component {
     }
   }
 
-  async transcribe(clip) {
+  async transcribe(clip, timing) {
     const { sessionId, cloudProfile } = this.state;
     if (!sessionId) return;
     this.setState((s) => ({ pending: s.pending + 1, phase: "quality" }));
     try {
-      const result = await api.sendUtterance(sessionId, clip, PROFILE_IDS[cloudProfile]);
+      const result = await api.sendUtterance(sessionId, clip, PROFILE_IDS[cloudProfile], timing);
       this.setState((s) => {
         const liveSegments = s.liveSegments.concat(result.segments.map((segment) => ({
           sp: segment.speaker || "Nepoznat govornik",
@@ -333,6 +345,7 @@ export default class App extends React.Component {
               }]),
         };
       });
+      if (draft.persisted) this.loadReports();
     } catch (error) {
       this.setState({ phase: null, errKey: errorKey(error) });
     }

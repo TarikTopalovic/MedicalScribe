@@ -128,5 +128,36 @@ the Electron renderer must never receive `SUPABASE_SERVICE_ROLE_KEY`.
 Before applying the migration to any patient-data project, confirm the exact
 project region in Supabase (choose an exact EU region, not the generic Europe
 grouping), sign the required DPA, and create clinician accounts in Supabase
-Auth. The current app does not persist clinical data until its authentication
-and server-side Supabase repository are implemented.
+Auth.
+
+### What is wired today
+
+`backend/lib/store.js` is the server-side repository. It is enabled only when
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `MEDISCRIBE_CLINICIAN_EMAIL`
+are all set; otherwise every note stays in memory and the app behaves exactly
+as before. `GET /api/config` reports which it is under `storage.persisted`.
+
+What is written, and when:
+
+| Step | Row |
+| --- | --- |
+| session opened | `clinical_sessions` (`status='open'`) |
+| utterance transcribed | `transcript_segments` with the timing the recorder measured |
+| draft prepared | `draft_notes` revision, previous revision loses `is_current`, session becomes `finalized` |
+
+Audio is never written. A confidence score is stored only when the provider
+returns one — migration `20260913010500` makes the column nullable so
+"unknown" stays distinguishable from "certain". Writes are best-effort: a
+database failure is swallowed and the consultation continues, because losing a
+note is better than losing the visit.
+
+`GET /api/reports` reads finalized sessions with their current draft and fills
+the Izvještaji screen. The renderer never talks to Supabase and never holds a
+key; the secret key stays in the bridge.
+
+**Sign-in is not real yet.** The design's sign-in screen is decorative, so the
+bridge writes as one configured clinician (`MEDISCRIBE_CLINICIAN_EMAIL`),
+created on first use. Row-level security is fully enforced and owner-scoped, so
+adding Supabase Auth later means issuing each clinician a real account and
+passing their token instead — no schema change. Do not put real patient data in
+before that exists.

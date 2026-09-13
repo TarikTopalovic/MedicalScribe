@@ -47,6 +47,7 @@ export class Capture {
         noiseSuppression: true,
       },
     };
+    this.origin = performance.now();
     this.stream = await navigator.mediaDevices.getUserMedia(constraints);
     this.context = new (window.AudioContext || window.webkitAudioContext)();
     const source = this.context.createMediaStreamSource(this.stream);
@@ -64,6 +65,7 @@ export class Capture {
     this.recorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined);
     this.chunks = [];
     this.startedAt = performance.now();
+    this.clipStartMs = this.startedAt - this.origin;
     this.quietSince = 0;
     this.heardSpeech = false;
     this.recorder.ondataavailable = (event) => {
@@ -73,7 +75,9 @@ export class Capture {
       const clip = new Blob(this.chunks, { type: this.recorder.mimeType || "audio/webm" });
       this.chunks = [];
       const worthSending = this.heardSpeech && clip.size > 2048;
-      if (worthSending) this.onUtterance(clip);
+      if (worthSending) {
+        this.onUtterance(clip, { startMs: this.clipStartMs, endMs: performance.now() - this.origin });
+      }
       if (this.running) this.openClip();
     };
     this.recorder.start();
