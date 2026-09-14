@@ -2,7 +2,7 @@
 const express = require("express");
 const multer = require("multer");
 
-const { toWavBuffer } = require("../lib/audio");
+const { toWavBuffer, speechBandTilt } = require("../lib/audio");
 
 const router = express.Router();
 const PROFILE_MODELS = {
@@ -105,8 +105,10 @@ async function transcribeRemote(buffer, mimetype, { approved, profile }) {
   // rejects the browser's WebM container outright, which is what made the whole
   // cloud mode fail; the audio still leaves only after explicit approval.
   let audio;
+  let tilt = null;
   try {
     audio = await toWavBuffer(buffer);
+    tilt = speechBandTilt(audio);
   } catch {
     const error = new Error("Zvuk izjave nije mogao biti pripremljen za slanje.");
     error.status = 502;
@@ -158,9 +160,9 @@ async function transcribeRemote(buffer, mimetype, { approved, profile }) {
       return { text: "", language: "bs", segments: [], confidence: null };
     }
     if (!text || (all.length && !kept.length)) {
-      return { text: "", language: "bs", segments: [], confidence: null, providerLanguage: language };
+      return { text: "", language: "bs", segments: [], confidence: null, providerLanguage: language, bandTilt: tilt };
     }
-    return { text, language: "bs", segments: kept, confidence: derivedConfidence(kept), providerLanguage: language };
+    return { text, language: "bs", segments: kept, confidence: derivedConfidence(kept), providerLanguage: language, bandTilt: tilt };
   } catch (error) {
     // Do not serialize or log provider response bodies, audio, or transcript.
     if (error.status) throw error;

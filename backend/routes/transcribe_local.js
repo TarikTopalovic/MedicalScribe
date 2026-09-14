@@ -8,6 +8,8 @@ const path = require("path");
 const express = require("express");
 const multer = require("multer");
 
+const { toWavBuffer, speechBandTilt } = require("../lib/audio");
+
 const router = express.Router();
 const MAX_AUDIO_BYTES = 16 * 1024 * 1024;
 const AUDIO_FORMATS = new Set(["audio/webm", "audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3", "audio/ogg"]);
@@ -107,13 +109,16 @@ async function transcribeLocal(buffer) {
 
 async function decodeOnce(buffer, settings) {
   let directory;
+  let tilt = null;
   try {
     directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mediscribe-local-"));
     const token = crypto.randomUUID();
-    const sourcePath = path.join(directory, `${token}.input`);
     const wavPath = path.join(directory, `${token}.wav`);
-    await fs.promises.writeFile(sourcePath, buffer, { mode: 0o600 });
-    await run(settings.ffmpeg, ["-y", "-loglevel", "error", "-i", sourcePath, "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath], 30_000);
+    // Decoded once: whisper reads the file, and the same samples tell us
+    // whether the microphone delivered a usable band.
+    const wav = await toWavBuffer(buffer);
+    tilt = speechBandTilt(wav);
+    await fs.promises.writeFile(wavPath, wav, { mode: 0o600 });
     const script = path.resolve(__dirname, "..", "..", "scripts", "transcribe_local_once.py");
     const threads = String(Math.max(1, Number.parseInt(process.env.MEDISCRIBE_LOCAL_THREADS || "", 10) || os.cpus().length));
     const output = await run(settings.python, [script, wavPath, "--binary", settings.binary, "--model", settings.model, "--vad-model", settings.vadModel, "--threads", threads, "--max-cpu-temperature", "85"], 190_000);
@@ -124,7 +129,7 @@ async function decodeOnce(buffer, settings) {
     const text = segments.map((segment) => String(segment.text || "").trim()).filter(Boolean).join(" ").trim();
     const scored = segments.map((segment) => Number(segment.confidence)).filter((value) => Number.isFinite(value));
     const confidence = scored.length ? Number((scored.reduce((total, value) => total + value, 0) / scored.length).toFixed(3)) : null;
-    return { text, language: "bs", segments: text ? segments : [], confidence: text ? confidence : null, noSpeech: !text };
+    return { text, language: "bs", segments: text ? segments : [], confidence: text ? confidence : null, noSpeech: !text, bandTilt: tilt };
   } catch (error) {
     if (error.status) throw error;
     const thermal = /temperature|thermal|ohladi/i.test(String(error?.message || ""));

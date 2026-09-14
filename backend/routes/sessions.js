@@ -12,6 +12,7 @@ const path = require("path");
 const express = require("express");
 const multer = require("multer");
 
+const { NARROW_BAND_TILT } = require("../lib/audio");
 const { transcribeLocal } = require("./transcribe_local");
 const { transcribeRemote } = require("./transcribe_openrouter");
 const { draftNote } = require("../lib/note");
@@ -131,6 +132,9 @@ router.post("/:id/audio", upload.single("audio"), async (req, res) => {
       speaker: null,
       role: "unknown",
       confidence: result.confidence ?? null,
+      // A recogniser cannot hear what the microphone did not send. Saying so is
+      // more use than a transcript that quietly reads like a bad guess.
+      narrowBand: Number.isFinite(result.bandTilt) && result.bandTilt < NARROW_BAND_TILT,
       startMs,
       endMs: session.lastEndMs,
     };

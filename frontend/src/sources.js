@@ -91,6 +91,16 @@ function liveFlags(state) {
         text: "Segment " + (index + 1) + " nema govornika. Označite ga ručno prije odobrenja." });
     }
   });
+  // One line for the whole session: the microphone is the same all the way
+  // through, so repeating it per segment would bury everything else.
+  const narrow = state.liveSegments.findIndex((line) => line.narrow);
+  if (narrow !== -1) {
+    flags.push({
+      a: narrow, kind: "Mikrofon ne prenosi visoke tonove", dot: "#E0642A",
+      text: "Snimku nedostaje pojas suglasnika (s, š, c, t, k), pa nijedan model ne može pouzdano prepoznati riječi. "
+        + "Provjerite je li odabran pravi mikrofon i isključite obradu zvuka na uređaju.",
+    });
+  }
   (state.noteWarnings || []).forEach((warning, index) => {
     flags.push({ a: Number.isInteger(warning.evidence) ? warning.evidence : Math.max(0, state.liveSegments.length - 1),
       kind: warning.kind || "Provjerite prije unosa u karton", text: warning.text || String(warning), dot: "#E0642A" });

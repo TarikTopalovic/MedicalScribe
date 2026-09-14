@@ -326,6 +326,7 @@ export default class App extends React.Component {
           unk: !segment.speaker,
           low: segment.confidence != null && segment.confidence < 0.75,
           conf: segment.confidence,
+          narrow: !!segment.narrowBand,
           t: segment.text,
           start: segment.startMs, end: segment.endMs,
         })));
