@@ -101,6 +101,16 @@ function liveFlags(state) {
         + "Provjerite je li odabran pravi mikrofon i isključite obradu zvuka na uređaju.",
     });
   }
+  // A record that quietly lost a line is worse than one that admits it.
+  if (state.storageWarning) {
+    flags.push({
+      a: Math.max(0, state.liveSegments.length - 1),
+      kind: "Nije sve sačuvano u bazu", dot: "#C0281A",
+      text: state.storageWarning === "draft"
+        ? "Nacrt nije upisan u sigurnu pohranu i postoji samo u memoriji ove sesije. Kopirajte ga prije zatvaranja."
+        : "Najmanje jedna izjava nije upisana u sigurnu pohranu. Transkript je i dalje ovdje, ali zapis nije potpun.",
+    });
+  }
   (state.noteWarnings || []).forEach((warning, index) => {
     flags.push({ a: Number.isInteger(warning.evidence) ? warning.evidence : Math.max(0, state.liveSegments.length - 1),
       kind: warning.kind || "Provjerite prije unosa u karton", text: warning.text || String(warning), dot: "#E0642A" });

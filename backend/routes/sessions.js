@@ -31,6 +31,20 @@ const upload = multer({
 
 const sessions = new Map();
 
+// Names for the record, taken from configuration rather than guessed.
+function localModelName() {
+  const file = String(process.env.MEDISCRIBE_WHISPER_FINAL_MODEL || "").split("/").pop();
+  return file ? `whisper.cpp ${file.replace(/^ggml-|\.bin$/g, "")}` : "whisper.cpp";
+}
+
+function cloudModelName(profile) {
+  const configured = String(process.env.MEDISCRIBE_OPENROUTER_TRANSCRIPTION_MODEL || "").trim();
+  if (configured) return configured;
+  return String(profile || process.env.MEDISCRIBE_OPENROUTER_STT_PROFILE || "mai").toLowerCase() === "whisper"
+    ? "openai/whisper-large-v3"
+    : "microsoft/mai-transcribe-2";
+}
+
 // Diagnostics only, and off unless MEDISCRIBE_DEBUG_AUDIO_DIR is set: the
 // clinician's own test recording is kept so the capture chain can be measured
 // instead of guessed at. Delete the directory and unset the variable when the
@@ -50,7 +64,17 @@ function keepForDiagnostics(buffer, mimetype, mode) {
 
 function sweep() {
   const cutoff = Date.now() - SESSION_TTL_MS;
-  sessions.forEach((session, id) => { if (session.touchedAt < cutoff) sessions.delete(id); });
+  sessions.forEach((session, id) => {
+    if (session.touchedAt >= cutoff) return;
+    sessions.delete(id);
+    // A consultation nobody came back to is closed in the database too, rather
+    // than sitting open forever and counting as work in progress.
+    if (session.recordReady) {
+      session.recordReady
+        .then((recordId) => (recordId ? store.archiveSession(recordId) : null))
+        .catch(() => {});
+    }
+  });
 }
 
 function load(req, res) {
@@ -75,12 +99,27 @@ router.post("/", (req, res) => {
   }
   sweep();
   const id = crypto.randomUUID();
-  const session = { id, mode, approved, utterances: 0, lastEndMs: 0, recordId: null, recordReady: null, createdAt: Date.now(), touchedAt: Date.now() };
+  const patient = req.body?.patient && typeof req.body.patient === "object" ? req.body.patient : null;
+  const session = {
+    id, mode, approved, utterances: 0, lastEndMs: 0, recordId: null, recordReady: null,
+    patientLabel: patient ? String(patient.name || "").slice(0, 200) : "",
+    patientReason: patient ? String(patient.reason || "").slice(0, 300) : "",
+    unsaved: 0,
+    createdAt: Date.now(), touchedAt: Date.now(),
+  };
   sessions.set(id, session);
   // Persistence is best-effort: a consultation never fails on the database.
   // Later writes wait for this promise, so they cannot race the session insert.
   if (store.configured) {
-    session.recordReady = store.openSession()
+    session.recordReady = store.openSession({
+      patientLabel: session.patientLabel,
+      patientReason: session.patientReason,
+      mode,
+      // The route is fixed by the mode, so the model is known before the first
+      // utterance; a per-utterance profile override would not change it.
+      transcriptionModel: mode === "cloud" ? cloudModelName(req.body?.profile) : localModelName(),
+      draftModel: mode === "local" ? (process.env.MEDISCRIBE_OLLAMA_MODEL || "") : (process.env.MEDISCRIBE_OPENROUTER_DRAFT_MODEL || ""),
+    })
       .then((recordId) => { session.recordId = recordId; return recordId; })
       .catch(() => null);
   }
@@ -138,11 +177,22 @@ router.post("/:id/audio", upload.single("audio"), async (req, res) => {
       startMs,
       endMs: session.lastEndMs,
     };
+    // The write is awaited: a clinical record that quietly loses an utterance
+    // is worse than one that says it lost it. store.addSegment already retries
+    // a dropped connection once.
     const recordId = await session.recordReady;
+    let persisted = null;
     if (recordId) {
-      store.addSegment(recordId, { ...segment, speaker: "unknown" }).catch(() => {});
+      try {
+        await store.addSegment(recordId, { ...segment, speaker: "unknown" });
+        persisted = true;
+      } catch (error) {
+        session.unsaved += 1;
+        persisted = false;
+        console.warn("[pohrana] segment", offset, "nije sačuvan:", error.message);
+      }
     }
-    return res.json({ final: true, segments: [segment] });
+    return res.json({ final: true, segments: [segment], persisted, unsaved: session.unsaved });
   } catch (error) {
     console.warn("[zvuk]", error.status || 502, error.message, error.detail || "");
     return res.status(error.status || 502).json({ greska: error.message || "Transkripcija nije uspjela." });
@@ -161,11 +211,25 @@ router.post("/:id/draft", async (req, res) => {
   try {
     const draft = await draftNote(clean, session.mode);
     let revision = 0;
+    let storageError = "";
     const recordId = await session.recordReady;
     if (recordId) {
-      revision = await store.saveDraft(recordId, draft).catch(() => 0);
+      try {
+        revision = await store.saveDraft(recordId, draft);
+      } catch (error) {
+        storageError = "Nacrt nije sačuvan u bazu. Ostaje u memoriji sesije.";
+        console.warn("[pohrana] nacrt nije sačuvan:", error.message);
+      }
+    } else if (store.configured) {
+      storageError = "Sesija nije otvorena u bazi, pa nacrt nije sačuvan.";
     }
-    return res.json({ ...draft, revision, persisted: revision > 0 });
+    return res.json({
+      ...draft,
+      revision,
+      persisted: revision > 0,
+      storageError,
+      unsaved: session.unsaved,
+    });
   } catch (error) {
     console.warn("[nacrt]", error.status || 502, error.message);
     return res.status(error.status || 502).json({ greska: error.message || "Nacrt nije pripremljen." });

@@ -15,12 +15,16 @@ const CLINICIAN = process.env.MEDISCRIBE_CLINICIAN_EMAIL || "";
 
 const configured = Boolean(URL_BASE && KEY && CLINICIAN);
 let ownerId = null;
+// The identity and provenance columns arrive with a migration the practice
+// applies deliberately. Asked once, then remembered: writing a column the
+// database does not have would fail the whole row.
+let identityColumns = null;
 
 function headers(extra) {
   return { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...extra };
 }
 
-async function rest(path, options = {}) {
+async function once(path, options) {
   const response = await fetch(`${URL_BASE}/rest/v1${path}`, {
     ...options,
     headers: headers(options.headers),
@@ -35,6 +39,20 @@ async function rest(path, options = {}) {
   // `return=minimal` answers 201 with an empty body, not 204.
   const body = await response.text();
   return body ? JSON.parse(body) : null;
+}
+
+// A dropped connection or a momentary 5xx must not cost a clinical record a
+// transcript segment. A rejected request (4xx) is a real answer and is not
+// repeated: sending the same bad row again would only fail the same way.
+async function rest(path, options = {}) {
+  try {
+    return await once(path, options);
+  } catch (error) {
+    const retryable = !error.status || error.status >= 500 || error.status === 429;
+    if (!retryable) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return once(path, options);
+  }
 }
 
 // The schema owns rows by auth user. Until the app has real sign-in there is
@@ -65,12 +83,31 @@ async function resolveOwner() {
   return ownerId;
 }
 
-async function openSession() {
+async function hasIdentityColumns() {
+  if (identityColumns !== null) return identityColumns;
+  try {
+    await rest("/clinical_sessions?select=patient_label,processing_mode&limit=1");
+    identityColumns = true;
+  } catch {
+    identityColumns = false;
+  }
+  return identityColumns;
+}
+
+async function openSession(details = {}) {
   const owner = await resolveOwner();
+  const row = { owner_id: owner, language: "bs", status: "open" };
+  if (await hasIdentityColumns()) {
+    if (details.patientLabel) row.patient_label = String(details.patientLabel).slice(0, 200);
+    if (details.patientReason) row.patient_reason = String(details.patientReason).slice(0, 300);
+    if (details.mode) row.processing_mode = details.mode;
+    if (details.transcriptionModel) row.transcription_model = String(details.transcriptionModel).slice(0, 120);
+    if (details.draftModel) row.draft_model = String(details.draftModel).slice(0, 120);
+  }
   const rows = await rest("/clinical_sessions", {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ owner_id: owner, language: "bs", status: "open" }),
+    body: JSON.stringify(row),
   });
   return rows[0].id;
 }
@@ -78,18 +115,20 @@ async function openSession() {
 // One completed utterance. Timing is what the recorder measured; a missing
 // confidence stays null rather than being invented.
 async function addSegment(recordId, segment) {
+  const row = {
+    session_id: recordId,
+    segment_index: segment.index,
+    speaker: segment.speaker || "unknown",
+    transcript_text: segment.text.slice(0, 4000),
+    start_ms: Math.max(0, Math.round(segment.startMs)),
+    end_ms: Math.max(1, Math.round(segment.endMs)),
+    confidence: segment.confidence ?? null,
+  };
+  if (await hasIdentityColumns()) row.narrow_band = Boolean(segment.narrowBand);
   await rest("/transcript_segments", {
     method: "POST",
     headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({
-      session_id: recordId,
-      segment_index: segment.index,
-      speaker: segment.speaker || "unknown",
-      transcript_text: segment.text.slice(0, 4000),
-      start_ms: Math.max(0, Math.round(segment.startMs)),
-      end_ms: Math.max(1, Math.round(segment.endMs)),
-      confidence: segment.confidence ?? null,
-    }),
+    body: JSON.stringify(row),
   });
 }
 
@@ -128,6 +167,16 @@ async function saveDraft(recordId, draft) {
   return revision;
 }
 
+// A consultation the clinician walked away from is closed rather than left
+// open forever: the schema keeps 'open' for sessions that can still be written.
+async function archiveSession(recordId) {
+  await rest(`/clinical_sessions?id=eq.${encodeURIComponent(recordId)}&status=eq.open`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ status: "archived", archived_at: new Date().toISOString() }),
+  });
+}
+
 // Child transcript and draft rows cascade from the session in the database.
 async function deleteSession(recordId) {
   await rest(`/clinical_sessions?id=eq.${encodeURIComponent(recordId)}`, {
@@ -139,7 +188,8 @@ async function deleteSession(recordId) {
 // The reports screen: finalized sessions with their current draft.
 async function listReports(limit = 20) {
   const owner = await resolveOwner();
-  const select = "id,created_at,finalized_at,status,draft_notes(revision,subjective,objective,assessment,plan,is_current)";
+  const identity = (await hasIdentityColumns()) ? "patient_label,processing_mode," : "";
+  const select = `id,created_at,finalized_at,status,${identity}draft_notes(revision,subjective,objective,assessment,plan,is_current)`;
   const rows = await rest(
     `/clinical_sessions?owner_id=eq.${owner}&select=${select}&order=created_at.desc&limit=${limit}`);
   return rows.map((row) => {
@@ -149,10 +199,12 @@ async function listReports(limit = 20) {
       createdAt: row.created_at,
       finalizedAt: row.finalized_at,
       status: row.status,
+      patient: row.patient_label || "",
+      mode: row.processing_mode || "",
       revision: current?.revision || 0,
       summary: (current?.subjective || "").slice(0, 90),
     };
   });
 }
 
-module.exports = { configured, openSession, addSegment, saveDraft, deleteSession, listReports };
+module.exports = { configured, openSession, addSegment, saveDraft, deleteSession, archiveSession, listReports, hasIdentityColumns };

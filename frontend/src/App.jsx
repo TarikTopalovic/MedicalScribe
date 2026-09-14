@@ -59,7 +59,7 @@ export default class App extends React.Component {
     demo: false, configReady: false, bridgeDown: false,
     liveSegments: [], noteSections: null, noteWarnings: [],
     sessions: [], sessionId: null, pending: 0, mics: [], storedReports: [], micLevel: 0,
-    schedule: [], patient: null, notificationsOpen: false,
+    schedule: [], patient: null, notificationsOpen: false, storageWarning: "",
   };
 
   scrollRef = React.createRef();
@@ -242,6 +242,7 @@ export default class App extends React.Component {
       note: null, noteTouched: {}, noteStale: false, approved: false, cloudApproved: false,
       settingsOpen: false, confirm: null, errKey: null,
       liveSegments: [], noteSections: null, noteWarnings: [], sessionId: null, pending: 0, micLevel: 0,
+      storageWarning: "",
     });
     this.pendingCount = 0;
   };
@@ -281,7 +282,8 @@ export default class App extends React.Component {
     // request first can make Chromium refuse to open its permission prompt.
     const microphone = this.capture.start(device?.id);
     try {
-      const session = await api.createSession(MODE_IDS[mode], mode === "local" ? true : cloudApproved);
+      const session = await api.createSession(
+        MODE_IDS[mode], mode === "local" ? true : cloudApproved, this.state.patient, PROFILE_IDS[this.state.cloudProfile]);
       this.setState({ sessionId: session.id });
       await microphone;
       // Browsers hide device labels until the first successful permission.
@@ -302,6 +304,8 @@ export default class App extends React.Component {
     const session = await api.createSession(
       MODE_IDS[this.state.mode],
       this.state.mode === "local" ? true : this.state.cloudApproved,
+      this.state.patient,
+      PROFILE_IDS[this.state.cloudProfile],
     );
     this.setState({ sessionId: session.id });
     return send(session.id);
@@ -319,6 +323,7 @@ export default class App extends React.Component {
         return this.retryWithNewSession(send);
       });
       this.pendingCount -= 1;
+      if (result.persisted === false) this.setState({ storageWarning: "segment" });
       this.setState((s) => {
         const liveSegments = s.liveSegments.concat(result.segments.map((segment) => ({
           sp: segment.speaker || "Nepoznat govornik",
@@ -387,6 +392,7 @@ export default class App extends React.Component {
         if (error?.status !== 404) throw error;
         return this.retryWithNewSession(ask);
       });
+      if (draft.storageError) this.setState({ storageWarning: "draft" });
       this.setState((s) => {
         const sections = draft.sections || [];
         const note = sections.map((section) => (section.items || []).map((item) => item.text).join(" "));

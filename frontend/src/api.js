@@ -21,11 +21,18 @@ export function getConfig() {
   return json("/api/config");
 }
 
-export function createSession(mode, approved) {
+// The patient, when the session was opened from the schedule, so the saved
+// record can be matched to a person instead of a timestamp.
+export function createSession(mode, approved, patient, profile) {
   return json("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode, remote_processing_approved: approved }),
+    body: JSON.stringify({
+      mode,
+      remote_processing_approved: approved,
+      profile,
+      patient: patient ? { name: patient.name, reason: patient.reason } : undefined,
+    }),
   });
 }
 

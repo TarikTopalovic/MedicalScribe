@@ -14,6 +14,7 @@ test("persistence stays off unless URL, key and clinician are all set", () => {
 test("the store exposes only server-side operations", () => {
   assert.deepEqual(
     Object.keys(store).sort(),
-    ["addSegment", "configured", "deleteSession", "listReports", "openSession", "saveDraft"],
+    ["addSegment", "archiveSession", "configured", "deleteSession", "hasIdentityColumns",
+      "listReports", "openSession", "saveDraft"].sort(),
   );
 });
